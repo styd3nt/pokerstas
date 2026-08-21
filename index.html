@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ПокерСтас и Ко — Тотализатор</title>
+<style>
+  :root{
+    --felt: #0b5c2e;
+    --felt-dark: #063d1e;
+    --felt-darker: #021a0c;
+    --rail: #2b1a0d;
+    --rail-light: #4a2f18;
+    --gold: #ffd700;
+    --gold-dark: #b8860b;
+    --cream: #f5e9c9;
+    --cream-dim: #cdbf9a;
+    --red: #d21f1f;
+    --red-dark: #7a0d0d;
+    --ink: #1a0f05;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family: Arial, Helvetica, sans-serif;
+    background:
+      radial-gradient(circle at 50% 0%, var(--felt) 0%, var(--felt-dark) 55%, var(--felt-darker) 100%);
+    background-attachment: fixed;
+    color: var(--cream);
+    min-height:100vh;
+    padding: 18px 10px 40px;
+  }
+  .felt-dots{
+    position:fixed; inset:0; pointer-events:none; opacity:.12;
+    background-image: radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+    background-size: 14px 14px;
+  }
+  .wrap{ max-width: 620px; margin: 0 auto; position:relative; z-index:1; }
+
+  /* ---- header banner, Full Tilt style ---- */
+  .banner{
+    background: linear-gradient(180deg,#111 0%, #000 60%, #000 100%);
+    border: 2px solid var(--gold-dark);
+    border-radius: 10px;
+    padding: 14px 10px 12px;
+    text-align:center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+    margin-bottom: 16px;
+  }
+  .banner h1{
+    margin:0;
+    font-family: Arial Black, Arial, sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 34px;
+    letter-spacing: 1px;
+    background: linear-gradient(180deg, #fff6c8 0%, var(--gold) 40%, var(--gold-dark) 60%, #fff6c8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.8);
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.9));
+  }
+  .banner p{
+    margin: 4px 0 0;
+    color: var(--cream-dim);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight:bold;
+  }
+
+  /* ---- tabs ---- */
+  .tabs{
+    display:flex; gap:4px; margin-bottom:16px;
+    background: linear-gradient(180deg, var(--rail-light), var(--rail));
+    border: 2px solid #1a0f05;
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+  }
+  .tab-btn{
+    flex:1;
+    padding: 9px 4px;
+    border-radius: 5px;
+    border: 1px solid rgba(0,0,0,0.4);
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor:pointer;
+    background: linear-gradient(180deg, #3a2413, #241608);
+    color: var(--cream-dim);
+  }
+  .tab-btn.active{
+    background: linear-gradient(180deg, #ffe066, var(--gold-dark));
+    color: var(--ink);
+    border-color: var(--gold);
+    box-shadow: 0 1px 3px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6);
+  }
+
+  /* ---- panel (table rail look) ---- */
+  .panel{
+    background: linear-gradient(180deg, #0e4023, #062615);
+    border: 3px solid var(--rail);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: inset 0 0 0 2px rgba(255,215,0,0.08), 0 4px 10px rgba(0,0,0,0.5);
+  }
+  .section-label{
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--gold);
+    text-shadow: 0 1px 1px rgba(0,0,0,.8);
+    margin-bottom: 10px;
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+  }
+  .dim{ color: var(--cream-dim); font-size:12px; }
+  .center{ text-align:center; }
+
+  /* ---- glossy buttons ---- */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--red-dark);
+    background: linear-gradient(180deg, #ff5c5c 0%, var(--red) 45%, var(--red-dark) 100%);
+    color: #fff;
+    font-weight: bold;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 1px rgba(0,0,0,.6);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn.gold{
+    background: linear-gradient(180deg, #fff2a8 0%, var(--gold) 45%, var(--gold-dark) 100%);
+    color: var(--ink);
+    border-color: var(--gold-dark);
+    text-shadow: none;
+  }
+  .btn.ghost{
+    background: linear-gradient(180deg, #3a2413, #241608);
+    color: var(--cream-dim);
+    border-color: rgba(255,255,255,.15);
+    text-shadow:none;
+  }
+  .btn.block{ width:100%; }
+  .btn-row{ display:flex; gap:8px; margin-top:6px; }
+  .btn-row .btn{ flex:1; }
+
+  /* ---- chips (player picker) ---- */
+  .chip{
+    display:inline-flex; align-items:center; gap:5px;
+    padding: 7px 12px;
+    border-radius: 20px;
+    border: 2px solid rgba(255,215,0,0.3);
+    background: rgba(0,0,0,0.25);
+    color: var(--cream);
+    font-size: 13px;
+    font-weight:bold;
+    cursor:pointer;
+    margin: 0 6px 6px 0;
+  }
+  .chip.active{
+    background: linear-gradient(180deg,#fff2a8, var(--gold-dark));
+    color: var(--ink);
+    border-color: var(--gold);
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  .chip-group{ margin-bottom:14px; }
+  .cat-title{ display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:bold; font-size:13px; color:var(--cream); }
+
+  input[type=text]{
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 9px 14px;
+    color: var(--cream);
+    font-size: 13px;
+    outline:none;
+  }
+
+  /* ---- roster row / history row ---- */
+  .row{
+    display:flex; align-items:center; justify-content:space-between;
+    background: rgba(0,0,0,0.25);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+  }
+  .del{ cursor:pointer; color: var(--cream-dim); font-weight:bold; }
+
+  /* ---- chip stack (leaderboard) ---- */
+  .stacks{ display:flex; align-items:flex-end; justify-content:space-around; gap:6px; overflow-x:auto; padding-top:8px; }
+  .stack-col{ display:flex; flex-direction:column-reverse; align-items:center; min-width:52px; }
+  .stack-piece{
+    width:32px; height:9px; border-radius:20px;
+    border:2px solid var(--ink);
+    box-shadow: 0 1px 0 rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.3);
+    margin-top:-5px;
+  }
+  .stack-piece:first-child{ margin-top:0; }
+  .stack-name{ color:var(--cream-dim); font-size:11px; margin-top:6px; text-align:center; }
+  .stack-num{ font-weight:bold; font-size:14px; color:var(--cream); font-family: 'Courier New', monospace; }
+
+  .suit-gold{ color: var(--gold); }
+  .suit-red{ color: #ff6b6b; }
+  .footer-note{ text-align:center; color:var(--cream-dim); font-size:11px; margin-top:10px; }
+
+  ::-webkit-scrollbar{ height:6px; }
+</style>
+</head>
+<body>
+<div class="felt-dots"></div>
+<div class="wrap">
+
+  <div class="banner">
+    <h1>♠ ПОКЕРСТАС И КО ♥</h1>
+    <p>Тотализатор и статистика домашних покерных вечеров</p>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="content"></div>
+
+</div>
+
+<script>
+// ---------------- storage ----------------
+const STORAGE_KEY = "pokerstas-i-ko-data";
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return {roster:[], sessions:[]};
+    return JSON.parse(raw);
+  }catch(e){ return {roster:[], sessions:[]}; }
+}
+function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
+  catch(e){ /* локальное хранилище недоступно — данные сохранятся только на время сессии */ }
+}
+
+// ---------------- state ----------------
+const CATS = [
+  { key:"champion", label:"Чемпион вечера", hint:"у кого больше всех фишек в конце", suit:"♠", cls:"suit-gold" },
+  { key:"buster",   label:"Первый вылетевший", hint:"кто первый остался без фишек", suit:"♥", cls:"suit-red" },
+  { key:"bluffer",  label:"Король блефа", hint:"самый эпичный блеф вечера", suit:"♣", cls:"suit-gold" },
+];
+
+const state = {
+  data: loadData(),
+  tab: "tonight",
+  me: "",
+  picks: {champion:"", buster:"", bluffer:""},
+  resultsMode: false,
+  results: {champion:"", buster:"", bluffer:""},
+  newPlayer: "",
+  expandedHistory: null,
+};
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  const d = new Date(iso+"T12:00:00");
+  return d.toLocaleDateString("ru-RU", { weekday:"short", day:"numeric", month:"long" });
+}
+function esc(s){ return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function openSession(){ return state.data.sessions.find(s => s.status === "open"); }
+function completedSessions(){
+  return [...state.data.sessions].filter(s=>s.status==="completed").sort((a,b)=> a.date < b.date ? 1 : -1);
+}
+
+function computeLeaderboard(){
+  const totals = {};
+  state.data.roster.forEach(p => totals[p] = {name:p, points:0, nights:0, champion:0, buster:0, bluffer:0});
+  completedSessions().forEach(s => {
+    Object.entries(s.picks||{}).forEach(([player, pick]) => {
+      if(!totals[player]) totals[player] = {name:player, points:0, nights:0, champion:0, buster:0, bluffer:0};
+      totals[player].nights += 1;
+      CATS.forEach(c => { if(pick[c.key] && s.results && pick[c.key] === s.results[c.key]) totals[player].points += 1; });
+    });
+    CATS.forEach(c => {
+      const w = s.results && s.results[c.key];
+      if(w){
+        if(!totals[w]) totals[w] = {name:w, points:0, nights:0, champion:0, buster:0, bluffer:0};
+        totals[w][c.key] += 1;
+      }
+    });
+  });
+  return Object.values(totals).sort((a,b)=> b.points - a.points);
+}
+
+// ---------------- actions ----------------
+function setTab(t){ state.tab = t; state.resultsMode=false; render(); }
+
+function addPlayer(){
+  const name = (state.newPlayer||"").trim();
+  if(!name || state.data.roster.includes(name)) return;
+  state.data.roster.push(name);
+  state.newPlayer = "";
+  saveData(); render();
+}
+function removePlayer(name){
+  state.data.roster = state.data.roster.filter(p=>p!==name);
+  saveData(); render();
+}
+
+function startNight(){
+  state.data.sessions.push({ id:"s_"+Date.now(), date: todayISO(), status:"open", picks:{}, results:null });
+  saveData(); render();
+}
+
+function chooseMe(name){
+  state.me = name;
+  const os = openSession();
+  state.picks = (os && os.picks[name]) ? {...os.picks[name]} : {champion:"", buster:"", bluffer:""};
+  render();
+}
+function setPick(cat, name){ state.picks[cat] = name; render(); }
+function submitPicks(){
+  const os = openSession();
+  if(!os || !state.me || !state.picks.champion || !state.picks.buster || !state.picks.bluffer) return;
+  os.picks[state.me] = {...state.picks};
+  saveData(); render();
+}
+
+function toggleResultsMode(v){ state.resultsMode = v; render(); }
+function setResult(cat, name){ state.results[cat] = name; render(); }
+function submitResults(){
+  const os = openSession();
+  if(!os || !state.results.champion || !state.results.buster || !state.results.bluffer) return;
+  os.status = "completed";
+  os.results = {...state.results};
+  state.results = {champion:"", buster:"", bluffer:""};
+  state.resultsMode = false;
+  state.me = ""; state.picks = {champion:"", buster:"", bluffer:""};
+  saveData(); render();
+}
+
+function toggleHistory(id){ state.expandedHistory = state.expandedHistory===id ? null : id; render(); }
+
+// ---------------- render ----------------
+function renderTabs(){
+  const tabs = [["tonight","Сегодня"],["leaderboard","Таблица лидеров"],["history","История"],["roster","Состав"]];
+  return tabs.map(([k,l]) => `<button class="tab-btn ${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join("");
+}
+
+function chipRow(catKey, selected, roster, onClickName){
+  return `<div class="chip-group">` +
+    roster.map(p => `<span class="chip ${selected===p?'active':''}" onclick="${onClickName}('${catKey}','${esc(p)}')">${esc(p)}</span>`).join("") +
+  `</div>`;
+}
+
+function renderTonight(){
+  const os = openSession();
+  const roster = state.data.roster;
+
+  if(!os){
+    return `<div class="panel center">
+      <div style="font-size:28px;margin-bottom:6px;">🎲</div>
+      <p>Сегодня ещё не открыт покерный вечер.</p>
+      ${roster.length < 2
+        ? `<p class="dim">Сначала добавьте минимум двух игроков во вкладке «Состав».</p>`
+        : `<button class="btn gold" onclick="startNight()">Открыть вечер</button>`}
+    </div>`;
+  }
+
+  if(state.resultsMode){
+    return `<div class="panel">
+      <div class="section-label">Как всё было на самом деле</div>
+      ${CATS.map(c => `
+        <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label}</div>
+        ${chipRow(c.key, state.results[c.key], roster, "setResult")}
+      `).join("")}
+      <div class="btn-row">
+        <button class="btn ghost" onclick="toggleResultsMode(false)">Назад</button>
+        <button class="btn gold" ${(!state.results.champion||!state.results.buster||!state.results.bluffer)?'disabled':''} onclick="submitResults()">Закрыть вечер</button>
+      </div>
+    </div>`;
+  }
+
+  const lockedCount = Object.keys(os.picks||{}).length;
+  return `
+    <div class="panel">
+      <div class="section-label"><span>${fmtDate(os.date)} — приём прогнозов</span><span class="dim">${lockedCount}/${roster.length} готово</span></div>
+      <div class="section-label" style="margin-top:12px;">Кто голосует</div>
+      <div class="chip-group">
+        ${roster.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(p)}</span>`).join("")}
+      </div>
+      ${state.me ? `
+        ${CATS.map(c => `
+          <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label} <span class="dim">— ${c.hint}</span></div>
+          ${chipRow(c.key, state.picks[c.key], roster, "setPick")}
+        `).join("")}
+        <button class="btn gold block" ${(!state.picks.champion||!state.picks.buster||!state.picks.bluffer)?'disabled':''} onclick="submitPicks()">
+          ${os.picks[state.me] ? "Обновить мои прогнозы" : "Зафиксировать мои прогнозы"}
+        </button>
+      ` : ``}
+    </div>
+    <button class="btn ghost block" onclick="toggleResultsMode(true)">Игра окончена — ввести результаты »</button>
+  `;
+}
+
+function stackHtml(count, color){
+  const capped = Math.min(count, 14);
+  let pieces = "";
+  for(let i=0;i<capped;i++){
+    pieces += `<div class="stack-piece" style="background:linear-gradient(180deg, ${color}, ${color}aa);"></div>`;
+  }
+  return `<div class="stack-col">${pieces}</div>`;
+}
+
+function renderLeaderboard(){
+  const lb = computeLeaderboard();
+  const anyPoints = lb.length > 0;
+  const stacks = lb.map((p,i) => `
+    <div class="stack-col">
+      ${stackHtml(p.points, i===0? "#ffd700" : i===1 ? "#cdbf9a" : "#8a6d3b")}
+      <div class="stack-num">${p.points}</div>
+      <div class="stack-name">${esc(p.name)}</div>
+    </div>
+  `).join("");
+
+  const fame = lb.filter(p => p.champion+p.buster+p.bluffer > 0)
+    .sort((a,b)=> (b.champion+b.buster+b.bluffer) - (a.champion+a.buster+a.bluffer))
+    .map(p => `
+      <div class="row">
+        <span style="font-weight:bold;">${esc(p.name)}</span>
+        <span class="dim" style="display:flex; gap:10px;">
+          ${p.champion? `<span class="suit-gold">${p.champion}× чемпион</span>`:''}
+          ${p.buster? `<span class="suit-red">${p.buster}× первый вылет</span>`:''}
+          ${p.bluffer? `<span class="suit-gold">${p.bluffer}× блеф</span>`:''}
+        </span>
+      </div>
+    `).join("");
+
+  return `
+    <div class="panel">
+      <div class="section-label">Самые точные прогнозы (очки тотализатора)</div>
+      ${anyPoints ? `<div class="stacks">${stacks}</div>` : `<p class="dim">Очков пока нет — они появятся после первого закрытого вечера.</p>`}
+    </div>
+    <div class="panel">
+      <div class="section-label">Зал славы (реальные результаты)</div>
+      ${fame || `<p class="dim">В зале славы пока никого нет.</p>`}
+    </div>
+  `;
+}
+
+function renderHistory(){
+  const list = completedSessions();
+  if(list.length === 0) return `<div class="panel center"><p class="dim">Записей о вечерах пока нет.</p></div>`;
+  return list.map(s => {
+    const open = state.expandedHistory === s.id;
+    const picksHtml = Object.entries(s.picks).map(([player,pick]) => `
+      <div class="row" style="background:transparent; padding:4px 0;">
+        <span class="dim">${esc(player)}</span>
+        <span style="display:flex; gap:10px;">
+          ${CATS.map(c => {
+            const correct = pick[c.key] === s.results[c.key];
+            return `<span style="color:${correct?'#ffd700':'#cdbf9a'};font-size:12px;">${correct?'✓':'✕'} ${esc(pick[c.key]||'—')}</span>`;
+          }).join("")}
+        </span>
+      </div>
+    `).join("");
+    return `
+      <div class="panel">
+        <div class="row" style="background:transparent; cursor:pointer; padding:0;" onclick="toggleHistory('${s.id}')">
+          <span style="font-weight:bold;">${fmtDate(s.date)}</span>
+          <span style="display:flex; gap:8px; font-size:12px;">
+            ${CATS.map(c=>`<span class="${c.cls}">${esc(s.results[c.key])}</span>`).join("")}
+          </span>
+        </div>
+        ${open ? `<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">${picksHtml}</div>` : ``}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRoster(){
+  const roster = state.data.roster;
+  return `
+    <div class="panel">
+      <div class="section-label">Компания</div>
+      ${roster.length===0 ? `<p class="dim">Добавьте друзей, чтобы начать.</p>` : roster.map(p => `
+        <div class="row">
+          <span>${esc(p)}</span>
+          <span class="del" onclick="removePlayer('${esc(p)}')">✕</span>
+        </div>
+      `).join("")}
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="text" id="newPlayerInput" placeholder="Имя друга" value="${esc(state.newPlayer)}"
+          oninput="state.newPlayer=this.value" onkeydown="if(event.key==='Enter') addPlayer()" style="flex:1;">
+        <button class="btn gold" onclick="addPlayer()">+ Добавить</button>
+      </div>
+    </div>
+    <p class="footer-note">Данные хранятся локально в этом браузере. Удобнее всего вести тотализатор с одного устройства, которое передаётся по кругу за столом.</p>
+  `;
+}
+
+function render(){
+  document.getElementById("tabs").innerHTML = renderTabs();
+  const c = document.getElementById("content");
+  if(state.tab === "tonight") c.innerHTML = renderTonight();
+  else if(state.tab === "leaderboard") c.innerHTML = renderLeaderboard();
+  else if(state.tab === "history") c.innerHTML = renderHistory();
+  else if(state.tab === "roster") c.innerHTML = renderRoster();
+
+  const input = document.getElementById("newPlayerInput");
+  if(input) input.focus({preventScroll:true});
+}
+
+render();
+</script>
+</body>
+</html>
