@@ -442,6 +442,18 @@ function submitResults(){
 
 function toggleHistory(id){ state.expandedHistory = state.expandedHistory===id ? null : id; render(); }
 
+function deleteSession(id){
+  if(!confirm("Удалить этот вечер из истории? Это действие нельзя отменить.")) return;
+  state.data.sessions = state.data.sessions.filter(s => s.id !== id);
+  saveData(); render();
+}
+
+function clearAllHistory(){
+  if(!confirm("Очистить всю статистику и историю вечеров? Список игроков останется, но все прошлые результаты, очки и финансы удалятся безвозвратно.")) return;
+  state.data.sessions = state.data.sessions.filter(s => s.status !== "completed");
+  saveData(); render();
+}
+
 // ---------------- render ----------------
 function renderTabs(){
   const tabs = [["tonight","Сегодня"],["leaderboard","Таблица лидеров"],["history","История"],["roster","Состав"]];
@@ -643,6 +655,7 @@ function renderLeaderboard(){
       <div class="section-label">💰 Финансы</div>
       ${money || `<p class="dim">Пока никто не платил бай-ин.</p>`}
     </div>
+    ${completedSessions().length ? `<button class="btn ghost block" onclick="clearAllHistory()">Очистить всю статистику</button>` : ``}
   `;
 }
 
@@ -688,8 +701,11 @@ function renderHistory(){
       <div class="panel">
         <div class="row" style="background:transparent; cursor:pointer; padding:0;" onclick="toggleHistory('${s.id}')">
           <span style="font-weight:bold;">${fmtDate(s.date)}</span>
-          <span style="display:flex; gap:8px; font-size:12px;">
-            ${CATS.map(c=>`<span class="${c.cls}">${esc(s.results[c.key])}</span>`).join("")}
+          <span style="display:flex; align-items:center; gap:10px;">
+            <span style="display:flex; gap:8px; font-size:12px;">
+              ${CATS.map(c=>`<span class="${c.cls}">${esc(s.results[c.key])}</span>`).join("")}
+            </span>
+            <span class="del" title="Удалить вечер" onclick="event.stopPropagation(); deleteSession('${s.id}')">✕</span>
           </span>
         </div>
         ${open ? `<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">${picksHtml}</div>${moneyHtml}` : ``}
