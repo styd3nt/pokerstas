@@ -257,12 +257,15 @@ function subscribeRealtime(){
   supabaseClient
     .channel("board-changes")
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "board", filter: `id=eq.${BOARD_ID}` }, (payload) => {
+      console.log("Получено обновление по realtime:", payload);
       if(payload.new && payload.new.data){
         state.data = payload.new.data;
         render();
       }
     })
-    .subscribe();
+    .subscribe((status) => {
+      console.log("Статус realtime-подключения:", status);
+    });
 }
 
 // ---------------- state ----------------
