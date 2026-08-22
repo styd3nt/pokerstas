@@ -215,6 +215,7 @@
 
   ::-webkit-scrollbar{ height:6px; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="felt-dots"></div>
@@ -231,18 +232,37 @@
 </div>
 
 <script>
+// ---------------- Supabase config ----------------
+// Вставьте сюда свои значения из Project Settings → API
+const SUPABASE_URL = "https://iyknetibvdqhzrfmzhtq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_kicuuWIlDv8Iakt1s8-qNg_gSfufsVo";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const BOARD_ID = "main";
+
 // ---------------- storage ----------------
-const STORAGE_KEY = "pokerstas-i-ko-data";
-function loadData(){
+async function loadData(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return {roster:[], sessions:[]};
-    return JSON.parse(raw);
+    const { data, error } = await supabaseClient.from("board").select("data").eq("id", BOARD_ID).single();
+    if(error || !data) return {roster:[], sessions:[]};
+    return data.data;
   }catch(e){ return {roster:[], sessions:[]}; }
 }
-function saveData(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
-  catch(e){ /* локальное хранилище недоступно — данные сохранятся только на время сессии */ }
+async function saveData(){
+  try{
+    await supabaseClient.from("board").update({ data: state.data, updated_at: new Date().toISOString() }).eq("id", BOARD_ID);
+  }catch(e){ console.error("Не удалось сохранить в Supabase:", e); }
+}
+function subscribeRealtime(){
+  supabaseClient
+    .channel("board-changes")
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "board", filter: `id=eq.${BOARD_ID}` }, (payload) => {
+      if(payload.new && payload.new.data){
+        state.data = payload.new.data;
+        render();
+      }
+    })
+    .subscribe();
 }
 
 // ---------------- state ----------------
@@ -253,7 +273,8 @@ const CATS = [
 ];
 
 const state = {
-  data: loadData(),
+  data: {roster:[], sessions:[]},
+  loading: true,
   tab: "tonight",
   me: "",
   picks: {champion:"", buster:"", bluffer:""},
@@ -498,11 +519,16 @@ function renderRoster(){
         <button class="btn gold" onclick="addPlayer()">+ Добавить</button>
       </div>
     </div>
-    <p class="footer-note">Данные хранятся локально в этом браузере. Удобнее всего вести тотализатор с одного устройства, которое передаётся по кругу за столом.</p>
+    <p class="footer-note">Данные синхронизируются в реальном времени — все, кто открыл сайт, видят одни и те же прогнозы и результаты.</p>
   `;
 }
 
 function render(){
+  if(state.loading){
+    document.getElementById("tabs").innerHTML = "";
+    document.getElementById("content").innerHTML = `<div class="panel center"><p>Загрузка стола…</p></div>`;
+    return;
+  }
   document.getElementById("tabs").innerHTML = renderTabs();
   const c = document.getElementById("content");
   if(state.tab === "tonight") c.innerHTML = renderTonight();
@@ -514,7 +540,13 @@ function render(){
   if(input) input.focus({preventScroll:true});
 }
 
-render();
+async function initApp(){
+  state.data = await loadData();
+  state.loading = false;
+  render();
+  subscribeRealtime();
+}
+initApp();
 </script>
 </body>
 </html>
