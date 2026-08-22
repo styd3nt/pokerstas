@@ -283,7 +283,9 @@ const state = {
   picks: {champion:"", buster:"", bluffer:""},
   resultsMode: false,
   results: {champion:"", buster:"", bluffer:""},
+  payouts: {},
   newPlayer: "",
+  newBuyIn: 500,
   expandedHistory: null,
 };
 
@@ -301,19 +303,27 @@ function completedSessions(){
 
 function computeLeaderboard(){
   const totals = {};
-  state.data.roster.forEach(p => totals[p] = {name:p, points:0, nights:0, champion:0, buster:0, bluffer:0});
+  state.data.roster.forEach(p => totals[p] = {name:p, points:0, nights:0, champion:0, buster:0, bluffer:0, spent:0, won:0, moneyNights:0, rebuys:0});
   completedSessions().forEach(s => {
     Object.entries(s.picks||{}).forEach(([player, pick]) => {
-      if(!totals[player]) totals[player] = {name:player, points:0, nights:0, champion:0, buster:0, bluffer:0};
+      if(!totals[player]) totals[player] = {name:player, points:0, nights:0, champion:0, buster:0, bluffer:0, spent:0, won:0, moneyNights:0, rebuys:0};
       totals[player].nights += 1;
       CATS.forEach(c => { if(pick[c.key] && s.results && pick[c.key] === s.results[c.key]) totals[player].points += 1; });
     });
     CATS.forEach(c => {
       const w = s.results && s.results[c.key];
       if(w){
-        if(!totals[w]) totals[w] = {name:w, points:0, nights:0, champion:0, buster:0, bluffer:0};
+        if(!totals[w]) totals[w] = {name:w, points:0, nights:0, champion:0, buster:0, bluffer:0, spent:0, won:0, moneyNights:0, rebuys:0};
         totals[w][c.key] += 1;
       }
+    });
+    (s.participants||[]).forEach(player => {
+      if(!totals[player]) totals[player] = {name:player, points:0, nights:0, champion:0, buster:0, bluffer:0, spent:0, won:0, moneyNights:0, rebuys:0};
+      const rebuys = (s.rebuys && s.rebuys[player]) || 0;
+      totals[player].spent += (1 + rebuys) * (s.buyIn || 0);
+      totals[player].won += (s.payouts && s.payouts[player]) || 0;
+      totals[player].rebuys += rebuys;
+      totals[player].moneyNights += 1;
     });
   });
   return Object.values(totals).sort((a,b)=> b.points - a.points);
@@ -335,8 +345,40 @@ function removePlayer(name){
 }
 
 function startNight(){
-  state.data.sessions.push({ id:"s_"+Date.now(), date: todayISO(), status:"open", picks:{}, results:null });
+  const buyIn = Number(state.newBuyIn) || 0;
+  state.data.sessions.push({ id:"s_"+Date.now(), date: todayISO(), status:"open", picks:{}, results:null, buyIn, participants:[], rebuys:{} });
   saveData(); render();
+}
+
+function toggleParticipant(name){
+  const os = openSession();
+  if(!os) return;
+  if(!os.participants) os.participants = [];
+  if(os.participants.includes(name)){
+    os.participants = os.participants.filter(p=>p!==name);
+    if(os.rebuys) delete os.rebuys[name];
+  }else{
+    os.participants.push(name);
+    if(!os.rebuys) os.rebuys = {};
+    if(os.rebuys[name] === undefined) os.rebuys[name] = 0;
+  }
+  saveData(); render();
+}
+
+function changeRebuy(name, delta){
+  const os = openSession();
+  if(!os) return;
+  if(!os.rebuys) os.rebuys = {};
+  const next = Math.max(0, (os.rebuys[name]||0) + delta);
+  os.rebuys[name] = next;
+  saveData(); render();
+}
+
+function setBuyInAmount(value){
+  const os = openSession();
+  if(!os) return;
+  os.buyIn = Number(value) || 0;
+  saveData();
 }
 
 function chooseMe(name){
@@ -353,14 +395,46 @@ function submitPicks(){
   saveData(); render();
 }
 
-function toggleResultsMode(v){ state.resultsMode = v; render(); }
+function sessionPot(s){
+  const participants = s.participants || [];
+  const rebuys = s.rebuys || {};
+  return participants.reduce((sum,p) => sum + (1+(rebuys[p]||0)) * (s.buyIn||0), 0);
+}
+
+function toggleResultsMode(v){
+  if(v){
+    const os = openSession();
+    state.payouts = {};
+    (os && os.participants || []).forEach(p => { state.payouts[p] = (os.payouts && os.payouts[p]) || 0; });
+  }
+  state.resultsMode = v;
+  render();
+}
 function setResult(cat, name){ state.results[cat] = name; render(); }
+
+function sumPayouts(){
+  return Object.values(state.payouts||{}).reduce((a,b)=> a + (Number(b)||0), 0);
+}
+function onPayoutInput(el, name){
+  state.payouts[name] = Number(el.value) || 0;
+  const os = openSession();
+  const pot = os ? sessionPot(os) : 0;
+  const sum = sumPayouts();
+  const span = document.getElementById("payoutTotal");
+  if(span){
+    span.textContent = `${sum} / ${pot} ₽`;
+    span.style.color = (sum !== pot) ? "#ff6b6b" : "var(--gold)";
+  }
+}
+
 function submitResults(){
   const os = openSession();
   if(!os || !state.results.champion || !state.results.buster || !state.results.bluffer) return;
   os.status = "completed";
   os.results = {...state.results};
+  os.payouts = {...state.payouts};
   state.results = {champion:"", buster:"", bluffer:""};
+  state.payouts = {};
   state.resultsMode = false;
   state.me = ""; state.picks = {champion:"", buster:"", bluffer:""};
   saveData(); render();
@@ -390,7 +464,11 @@ function renderTonight(){
       <p>Сегодня ещё не открыт покерный вечер.</p>
       ${roster.length < 2
         ? `<p class="dim">Сначала добавьте минимум двух игроков во вкладке «Состав».</p>`
-        : `<button class="btn gold" onclick="startNight()">Открыть вечер</button>`}
+        : `<div style="display:flex; gap:8px; justify-content:center; align-items:center; margin-bottom:12px;">
+             <span class="dim">Бай-ин, ₽</span>
+             <input type="text" inputmode="numeric" value="${esc(String(state.newBuyIn))}" oninput="state.newBuyIn=this.value" style="width:90px; text-align:center;">
+           </div>
+           <button class="btn gold" onclick="startNight()">Открыть вечер</button>`}
     </div>`;
   }
 
@@ -401,15 +479,17 @@ function renderTonight(){
         <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label}</div>
         ${chipRow(c.key, state.results[c.key], roster, "setResult")}
       `).join("")}
-      <div class="btn-row">
-        <button class="btn ghost" onclick="toggleResultsMode(false)">Назад</button>
-        <button class="btn gold" ${(!state.results.champion||!state.results.buster||!state.results.bluffer)?'disabled':''} onclick="submitResults()">Закрыть вечер</button>
-      </div>
+    </div>
+    ${renderPayoutsPanel(os)}
+    <div class="btn-row">
+      <button class="btn ghost" onclick="toggleResultsMode(false)">Назад</button>
+      <button class="btn gold" ${(!state.results.champion||!state.results.buster||!state.results.bluffer)?'disabled':''} onclick="submitResults()">Закрыть вечер</button>
     </div>`;
   }
 
   const lockedCount = Object.keys(os.picks||{}).length;
   return `
+    ${renderMoneyPanel(os, roster)}
     <div class="panel">
       <div class="section-label"><span>${fmtDate(os.date)} — приём прогнозов</span><span class="dim">${lockedCount}/${roster.length} готово</span></div>
       <div class="section-label" style="margin-top:12px;">Кто голосует</div>
@@ -427,6 +507,78 @@ function renderTonight(){
       ` : ``}
     </div>
     <button class="btn ghost block" onclick="toggleResultsMode(true)">Игра окончена — ввести результаты »</button>
+  `;
+}
+
+function renderMoneyPanel(os, roster){
+  const participants = os.participants || [];
+  const rebuys = os.rebuys || {};
+  const total = sessionPot(os);
+  return `
+    <div class="panel">
+      <div class="section-label">
+        <span>💰 Деньги</span>
+        <span style="display:flex; align-items:center; gap:6px;">
+          <span class="dim">Бай-ин, ₽</span>
+          <input type="text" inputmode="numeric" value="${esc(String(os.buyIn||0))}" onchange="setBuyInAmount(this.value)" style="width:70px; text-align:center; padding:5px 8px;">
+        </span>
+      </div>
+      <div class="dim" style="margin-bottom:6px;">Кто играет</div>
+      <div class="chip-group">
+        ${roster.map(p => `<span class="chip ${participants.includes(p)?'active':''}" onclick="toggleParticipant('${esc(p)}')">${esc(p)}</span>`).join("")}
+      </div>
+      ${participants.length ? `
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+          ${participants.map(p => {
+            const rb = rebuys[p] || 0;
+            const spent = (1+rb) * (os.buyIn||0);
+            return `
+              <div class="row">
+                <span>${esc(p)}</span>
+                <span style="display:flex; align-items:center; gap:10px;">
+                  <span style="display:flex; align-items:center; gap:6px;">
+                    <button class="btn ghost" style="padding:4px 10px;" onclick="changeRebuy('${esc(p)}', -1)">−</button>
+                    <span class="dim" style="min-width:70px; text-align:center;">докупок: ${rb}</span>
+                    <button class="btn ghost" style="padding:4px 10px;" onclick="changeRebuy('${esc(p)}', 1)">+</button>
+                  </span>
+                  <span style="font-weight:bold; font-family:'Courier New', monospace; color:var(--gold); min-width:60px; text-align:right;">${spent} ₽</span>
+                </span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <div class="section-label" style="margin-bottom:0;"><span>Общий банк</span><span style="color:var(--gold); font-family:'Courier New', monospace;">${total} ₽</span></div>
+      ` : `<p class="dim">Отметьте, кто сегодня играет.</p>`}
+    </div>
+  `;
+}
+
+function renderPayoutsPanel(os){
+  const participants = os.participants || [];
+  const pot = sessionPot(os);
+  if(!participants.length){
+    return `<div class="panel"><div class="section-label">🏆 Выигрыш</div><p class="dim">Во вкладке «Деньги» никто не отмечен как играющий — нечего делить.</p></div>`;
+  }
+  const sum = sumPayouts();
+  return `
+    <div class="panel">
+      <div class="section-label"><span>🏆 Выигрыш</span></div>
+      <p class="dim" style="margin-bottom:10px;">Впишите, кто сколько забрал — банк можно поделить как угодно: всё победителю, на двоих, на троих и т.д.</p>
+      <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+        ${participants.map(p => `
+          <div class="row">
+            <span>${esc(p)}</span>
+            <span style="display:flex; align-items:center; gap:6px;">
+              <input type="text" inputmode="numeric" value="${esc(String(state.payouts[p]||0))}" oninput="onPayoutInput(this,'${esc(p)}')" style="width:80px; text-align:right; padding:5px 8px;"> ₽
+            </span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="section-label" style="margin-bottom:0;">
+        <span>Роздано</span>
+        <span id="payoutTotal" style="color:${sum!==pot?'#ff6b6b':'var(--gold)'}; font-family:'Courier New', monospace;">${sum} / ${pot} ₽</span>
+      </div>
+    </div>
   `;
 }
 
@@ -463,6 +615,21 @@ function renderLeaderboard(){
       </div>
     `).join("");
 
+  const money = lb.filter(p => p.moneyNights > 0)
+    .sort((a,b)=> (b.won-b.spent) - (a.won-a.spent))
+    .map(p => {
+      const net = p.won - p.spent;
+      return `
+      <div class="row">
+        <span style="font-weight:bold;">${esc(p.name)}</span>
+        <span class="dim" style="display:flex; gap:10px; align-items:center;">
+          <span>${p.moneyNights} вечеров</span>
+          <span>${p.rebuys} докупок</span>
+          <span style="color:${net>=0?'#8fd694':'#ff6b6b'}; font-family:'Courier New', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+        </span>
+      </div>
+    `;}).join("");
+
   return `
     <div class="panel">
       <div class="section-label">Самые точные прогнозы (очки тотализатора)</div>
@@ -472,6 +639,10 @@ function renderLeaderboard(){
       <div class="section-label">Зал славы (реальные результаты)</div>
       ${fame || `<p class="dim">В зале славы пока никого нет.</p>`}
     </div>
+    <div class="panel">
+      <div class="section-label">💰 Финансы</div>
+      ${money || `<p class="dim">Пока никто не платил бай-ин.</p>`}
+    </div>
   `;
 }
 
@@ -480,6 +651,9 @@ function renderHistory(){
   if(list.length === 0) return `<div class="panel center"><p class="dim">Записей о вечерах пока нет.</p></div>`;
   return list.map(s => {
     const open = state.expandedHistory === s.id;
+    const participants = s.participants || [];
+    const rebuys = s.rebuys || {};
+    const total = participants.reduce((sum,p) => sum + (1+(rebuys[p]||0)) * (s.buyIn||0), 0);
     const picksHtml = Object.entries(s.picks).map(([player,pick]) => `
       <div class="row" style="background:transparent; padding:4px 0;">
         <span class="dim">${esc(player)}</span>
@@ -491,6 +665,25 @@ function renderHistory(){
         </span>
       </div>
     `).join("");
+    const moneyHtml = participants.length ? `
+      <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+        <div class="dim" style="margin-bottom:6px;">💰 Бай-ин ${s.buyIn||0} ₽ · банк ${total} ₽</div>
+        ${participants.map(p => {
+          const spent = (1+(rebuys[p]||0))*(s.buyIn||0);
+          const won = (s.payouts && s.payouts[p]) || 0;
+          const net = won - spent;
+          return `
+          <div class="row" style="background:transparent; padding:4px 0;">
+            <span class="dim">${esc(p)}</span>
+            <span class="dim" style="display:flex; gap:8px; align-items:center;">
+              <span>докупок: ${rebuys[p]||0}</span>
+              <span>получил ${won} ₽</span>
+              <span style="color:${net>=0?'#8fd694':'#ff6b6b'}; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+            </span>
+          </div>
+        `;}).join("")}
+      </div>
+    ` : "";
     return `
       <div class="panel">
         <div class="row" style="background:transparent; cursor:pointer; padding:0;" onclick="toggleHistory('${s.id}')">
@@ -499,7 +692,7 @@ function renderHistory(){
             ${CATS.map(c=>`<span class="${c.cls}">${esc(s.results[c.key])}</span>`).join("")}
           </span>
         </div>
-        ${open ? `<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">${picksHtml}</div>` : ``}
+        ${open ? `<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">${picksHtml}</div>${moneyHtml}` : ``}
       </div>
     `;
   }).join("");
