@@ -3,152 +3,170 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ПокерСтас и Ко — Тотализатор</title>
+<title>ПокерСтас — Тотализатор</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --felt: #0b5c2e;
-    --felt-dark: #063d1e;
-    --felt-darker: #021a0c;
-    --rail: #2b1a0d;
-    --rail-light: #4a2f18;
-    --gold: #ffd700;
-    --gold-dark: #b8860b;
-    --cream: #f5e9c9;
-    --cream-dim: #cdbf9a;
-    --red: #d21f1f;
-    --red-dark: #7a0d0d;
-    --ink: #1a0f05;
+    --bg-0: #08080d;
+    --bg-1: #100f18;
+    --panel: rgba(255,255,255,0.045);
+    --panel-border: rgba(255,255,255,0.09);
+    --panel-border-hover: rgba(198,255,61,0.35);
+    --gold: #C6FF3D;
+    --gold-dark: #8FCB1F;
+    --violet: #8B5CF6;
+    --violet-soft: #6D4FD1;
+    --cream: #F4F4F8;
+    --cream-dim: #8C8CA0;
+    --red: #FF3E88;
+    --red-dark: #B01E5C;
+    --ink: #0A0A0F;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     background:
-      radial-gradient(circle at 50% 0%, var(--felt) 0%, var(--felt-dark) 55%, var(--felt-darker) 100%);
+      radial-gradient(circle at 15% 0%, rgba(139,92,246,0.20), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(198,255,61,0.12), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(139,92,246,0.10), transparent 50%),
+      var(--bg-0);
     background-attachment: fixed;
     color: var(--cream);
     min-height:100vh;
-    padding: 18px 10px 40px;
+    padding: 18px 12px 40px;
+    -webkit-font-smoothing: antialiased;
   }
   .felt-dots{
-    position:fixed; inset:0; pointer-events:none; opacity:.12;
-    background-image: radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
-    background-size: 14px 14px;
+    position:fixed; inset:0; pointer-events:none; opacity:.5;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
   }
   .wrap{ max-width: 620px; margin: 0 auto; position:relative; z-index:1; }
 
-  /* ---- header banner, Full Tilt style ---- */
+  /* ---- header banner ---- */
   .banner{
-    background: linear-gradient(180deg,#111 0%, #000 60%, #000 100%);
-    border: 2px solid var(--gold-dark);
-    border-radius: 10px;
-    padding: 14px 10px 12px;
+    background: linear-gradient(160deg, rgba(139,92,246,0.16), rgba(198,255,61,0.06));
+    border: 1px solid var(--panel-border);
+    border-radius: 22px;
+    padding: 22px 16px 18px;
     text-align:center;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .banner::before{
+    content:"";
+    position:absolute; top:-40%; left:50%; transform:translateX(-50%);
+    width:280px; height:180px;
+    background: radial-gradient(circle, rgba(198,255,61,0.25), transparent 65%);
+    pointer-events:none;
   }
   .banner h1{
     margin:0;
-    font-family: Arial Black, Arial, sans-serif;
-    font-style: italic;
-    font-weight: 900;
-    font-size: 34px;
-    letter-spacing: 1px;
-    background: linear-gradient(180deg, #fff6c8 0%, var(--gold) 40%, var(--gold-dark) 60%, #fff6c8 100%);
+    position:relative;
+    font-family: 'Sora', sans-serif;
+    font-weight: 800;
+    font-size: 30px;
+    line-height:1.15;
+    letter-spacing: -0.3px;
+    background: linear-gradient(95deg, var(--gold) 0%, #eaff9e 30%, var(--violet) 75%, #c9aeff 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: 0 2px 0 rgba(0,0,0,0.8);
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,.9));
   }
   .banner p{
-    margin: 4px 0 0;
+    margin: 8px 0 0;
+    position:relative;
     color: var(--cream-dim);
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight:bold;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    font-weight:500;
+    font-family:'Inter', sans-serif;
   }
 
   /* ---- tabs ---- */
   .tabs{
     display:flex; gap:4px; margin-bottom:16px;
-    background: linear-gradient(180deg, var(--rail-light), var(--rail));
-    border: 2px solid #1a0f05;
-    border-radius: 8px;
-    padding: 4px;
-    box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 5px;
+    backdrop-filter: blur(16px);
   }
   .tab-btn{
     flex:1;
-    padding: 9px 4px;
-    border-radius: 5px;
-    border: 1px solid rgba(0,0,0,0.4);
-    font-weight: bold;
-    font-size: 11px;
+    padding: 10px 4px;
+    border-radius: 12px;
+    border: none;
+    font-family:'Sora', sans-serif;
+    font-weight: 700;
+    font-size: 11.5px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     cursor:pointer;
-    background: linear-gradient(180deg, #3a2413, #241608);
+    background: transparent;
     color: var(--cream-dim);
+    transition: all .15s ease;
   }
   .tab-btn.active{
-    background: linear-gradient(180deg, #ffe066, var(--gold-dark));
+    background: linear-gradient(120deg, var(--gold), #a8f23e 55%, #7de08a);
     color: var(--ink);
-    border-color: var(--gold);
-    box-shadow: 0 1px 3px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6);
+    box-shadow: 0 4px 14px rgba(198,255,61,0.25);
   }
 
-  /* ---- panel (table rail look) ---- */
+  /* ---- panel (glass card) ---- */
   .panel{
-    background: linear-gradient(180deg, #0e4023, #062615);
-    border: 3px solid var(--rail);
-    border-radius: 12px;
-    padding: 16px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 18px;
     margin-bottom: 14px;
-    box-shadow: inset 0 0 0 2px rgba(255,215,0,0.08), 0 4px 10px rgba(0,0,0,0.5);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   }
   .section-label{
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--gold);
-    text-shadow: 0 1px 1px rgba(0,0,0,.8);
-    margin-bottom: 10px;
+    letter-spacing: 1.2px;
+    color: var(--cream);
+    margin-bottom: 12px;
     display:flex; align-items:center; justify-content:space-between; gap:6px;
+    font-family:'Sora', sans-serif;
   }
   .dim{ color: var(--cream-dim); font-size:12px; }
   .center{ text-align:center; }
 
-  /* ---- glossy buttons ---- */
+  /* ---- buttons ---- */
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:6px;
-    padding: 10px 18px;
-    border-radius: 6px;
-    border: 1px solid var(--red-dark);
-    background: linear-gradient(180deg, #ff5c5c 0%, var(--red) 45%, var(--red-dark) 100%);
-    color: #fff;
-    font-weight: bold;
+    padding: 11px 20px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: rgba(255,255,255,0.06);
+    color: var(--cream);
+    font-family:'Sora', sans-serif;
+    font-weight: 700;
     font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    text-shadow: 0 1px 1px rgba(0,0,0,.6);
+    letter-spacing: 0.2px;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4);
+    transition: transform .1s ease, box-shadow .15s ease;
   }
-  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn:active{ transform: scale(0.97); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
   .btn.gold{
-    background: linear-gradient(180deg, #fff2a8 0%, var(--gold) 45%, var(--gold-dark) 100%);
+    background: linear-gradient(120deg, var(--gold), #a8f23e 55%, #7de08a);
     color: var(--ink);
-    border-color: var(--gold-dark);
-    text-shadow: none;
+    box-shadow: 0 6px 18px rgba(198,255,61,0.22);
   }
   .btn.ghost{
-    background: linear-gradient(180deg, #3a2413, #241608);
+    background: rgba(255,255,255,0.045);
+    border: 1px solid var(--panel-border);
     color: var(--cream-dim);
-    border-color: rgba(255,255,255,.15);
-    text-shadow:none;
   }
   .btn.block{ width:100%; }
   .btn-row{ display:flex; gap:8px; margin-top:6px; }
@@ -157,61 +175,65 @@
   /* ---- chips (player picker) ---- */
   .chip{
     display:inline-flex; align-items:center; gap:5px;
-    padding: 7px 12px;
-    border-radius: 20px;
-    border: 2px solid rgba(255,215,0,0.3);
-    background: rgba(0,0,0,0.25);
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255,255,255,0.04);
     color: var(--cream);
     font-size: 13px;
-    font-weight:bold;
+    font-weight:600;
     cursor:pointer;
     margin: 0 6px 6px 0;
+    transition: all .12s ease;
   }
   .chip.active{
-    background: linear-gradient(180deg,#fff2a8, var(--gold-dark));
-    color: var(--ink);
-    border-color: var(--gold);
-    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+    background: linear-gradient(120deg, var(--violet), var(--violet-soft));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(139,92,246,0.35);
   }
   .chip-group{ margin-bottom:14px; }
-  .cat-title{ display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:bold; font-size:13px; color:var(--cream); }
+  .cat-title{ display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:700; font-size:13px; color:var(--cream); }
 
   input[type=text]{
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px;
-    padding: 9px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 10px 14px;
     color: var(--cream);
-    font-size: 13px;
+    font-family:'Inter', sans-serif;
+    font-size: 13.5px;
     outline:none;
   }
+  input[type=text]:focus{ border-color: var(--panel-border-hover); }
 
   /* ---- roster row / history row ---- */
   .row{
     display:flex; align-items:center; justify-content:space-between;
-    background: rgba(0,0,0,0.25);
-    border-radius: 8px;
-    padding: 8px 12px;
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 10px 14px;
     margin-bottom: 6px;
   }
-  .del{ cursor:pointer; color: var(--cream-dim); font-weight:bold; }
+  .del{ cursor:pointer; color: var(--cream-dim); font-weight:bold; transition: color .12s ease; }
+  .del:hover{ color: var(--red); }
 
   /* ---- chip stack (leaderboard) ---- */
   .stacks{ display:flex; align-items:flex-end; justify-content:space-around; gap:6px; overflow-x:auto; padding-top:8px; }
   .stack-col{ display:flex; flex-direction:column-reverse; align-items:center; min-width:52px; }
   .stack-piece{
     width:32px; height:9px; border-radius:20px;
-    border:2px solid var(--ink);
-    box-shadow: 0 1px 0 rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
     margin-top:-5px;
   }
   .stack-piece:first-child{ margin-top:0; }
-  .stack-name{ color:var(--cream-dim); font-size:11px; margin-top:6px; text-align:center; }
-  .stack-num{ font-weight:bold; font-size:14px; color:var(--cream); font-family: 'Courier New', monospace; }
+  .stack-name{ color:var(--cream-dim); font-size:11px; margin-top:8px; text-align:center; font-weight:600; }
+  .stack-num{ font-weight:700; font-size:15px; color:var(--cream); font-family: 'JetBrains Mono', monospace; }
 
   .suit-gold{ color: var(--gold); }
-  .suit-red{ color: #ff6b6b; }
-  .footer-note{ text-align:center; color:var(--cream-dim); font-size:11px; margin-top:10px; }
+  .suit-red{ color: var(--red); }
+  .footer-note{ text-align:center; color:var(--cream-dim); font-size:11px; margin-top:10px; line-height:1.5; }
 
   ::-webkit-scrollbar{ height:6px; }
 </style>
@@ -222,8 +244,8 @@
 <div class="wrap">
 
   <div class="banner">
-    <h1>♠ ПОКЕРСТАС И КО ♥</h1>
-    <p>Тотализатор и статистика домашних покерных вечеров</p>
+    <h1>ПокерСтас</h1>
+    <p>Покерные вечера в кругу друзей</p>
   </div>
 
   <div class="tabs" id="tabs"></div>
@@ -272,7 +294,7 @@ function subscribeRealtime(){
 const CATS = [
   { key:"champion", label:"Чемпион вечера", hint:"у кого больше всех фишек в конце", suit:"♠", cls:"suit-gold" },
   { key:"buster",   label:"Первый вылетевший", hint:"кто первый остался без фишек", suit:"♥", cls:"suit-red" },
-  { key:"bluffer",  label:"Король блефа", hint:"самый эпичный блеф вечера", suit:"♣", cls:"suit-gold" },
+  { key:"bluffer",  label:"Лучшая раздача вечера", hint:"кто выиграл самую крутую раздачу", suit:"♣", cls:"suit-gold" },
 ];
 
 const state = {
@@ -423,7 +445,7 @@ function onPayoutInput(el, name){
   const span = document.getElementById("payoutTotal");
   if(span){
     span.textContent = `${sum} / ${pot} ₽`;
-    span.style.color = (sum !== pot) ? "#ff6b6b" : "var(--gold)";
+    span.style.color = (sum !== pot) ? "var(--red)" : "var(--gold)";
   }
 }
 
@@ -469,6 +491,7 @@ function chipRow(catKey, selected, roster, onClickName){
 function renderTonight(){
   const os = openSession();
   const roster = state.data.roster;
+  const activePlayers = (os && os.participants && os.participants.length) ? os.participants : roster;
 
   if(!os){
     return `<div class="panel center">
@@ -489,7 +512,7 @@ function renderTonight(){
       <div class="section-label">Как всё было на самом деле</div>
       ${CATS.map(c => `
         <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label}</div>
-        ${chipRow(c.key, state.results[c.key], roster, "setResult")}
+        ${chipRow(c.key, state.results[c.key], activePlayers, "setResult")}
       `).join("")}
     </div>
     ${renderPayoutsPanel(os)}
@@ -503,15 +526,16 @@ function renderTonight(){
   return `
     ${renderMoneyPanel(os, roster)}
     <div class="panel">
-      <div class="section-label"><span>${fmtDate(os.date)} — приём прогнозов</span><span class="dim">${lockedCount}/${roster.length} готово</span></div>
+      <div class="section-label"><span>${fmtDate(os.date)} — приём прогнозов</span><span class="dim">${lockedCount}/${activePlayers.length} готово</span></div>
+      ${activePlayers.length < roster.length ? `<p class="dim" style="margin-top:-6px; margin-bottom:10px;">Играют сегодня: ${activePlayers.map(esc).join(", ")}</p>` : ``}
       <div class="section-label" style="margin-top:12px;">Кто голосует</div>
       <div class="chip-group">
-        ${roster.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(p)}</span>`).join("")}
+        ${activePlayers.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(p)}</span>`).join("")}
       </div>
       ${state.me ? `
         ${CATS.map(c => `
           <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label} <span class="dim">— ${c.hint}</span></div>
-          ${chipRow(c.key, state.picks[c.key], roster, "setPick")}
+          ${chipRow(c.key, state.picks[c.key], activePlayers, "setPick")}
         `).join("")}
         <button class="btn gold block" ${(!state.picks.champion||!state.picks.buster||!state.picks.bluffer)?'disabled':''} onclick="submitPicks()">
           ${os.picks[state.me] ? "Обновить мои прогнозы" : "Зафиксировать мои прогнозы"}
@@ -553,13 +577,13 @@ function renderMoneyPanel(os, roster){
                     <span class="dim" style="min-width:70px; text-align:center;">докупок: ${rb}</span>
                     <button class="btn ghost" style="padding:4px 10px;" onclick="changeRebuy('${esc(p)}', 1)">+</button>
                   </span>
-                  <span style="font-weight:bold; font-family:'Courier New', monospace; color:var(--gold); min-width:60px; text-align:right;">${spent} ₽</span>
+                  <span style="font-weight:bold; font-family:'JetBrains Mono', monospace; color:var(--gold); min-width:60px; text-align:right;">${spent} ₽</span>
                 </span>
               </div>
             `;
           }).join("")}
         </div>
-        <div class="section-label" style="margin-bottom:0;"><span>Общий банк</span><span style="color:var(--gold); font-family:'Courier New', monospace;">${total} ₽</span></div>
+        <div class="section-label" style="margin-bottom:0;"><span>Общий банк</span><span style="color:var(--gold); font-family:'JetBrains Mono', monospace;">${total} ₽</span></div>
       ` : `<p class="dim">Отметьте, кто сегодня играет.</p>`}
     </div>
   `;
@@ -588,31 +612,40 @@ function renderPayoutsPanel(os){
       </div>
       <div class="section-label" style="margin-bottom:0;">
         <span>Роздано</span>
-        <span id="payoutTotal" style="color:${sum!==pot?'#ff6b6b':'var(--gold)'}; font-family:'Courier New', monospace;">${sum} / ${pot} ₽</span>
+        <span id="payoutTotal" style="color:${sum!==pot?'var(--red)':'var(--gold)'}; font-family:'JetBrains Mono', monospace;">${sum} / ${pot} ₽</span>
       </div>
     </div>
   `;
 }
 
-function stackHtml(count, color){
-  const capped = Math.min(count, 14);
-  let pieces = "";
-  for(let i=0;i<capped;i++){
-    pieces += `<div class="stack-piece" style="background:linear-gradient(180deg, ${color}, ${color}aa);"></div>`;
-  }
-  return `<div class="stack-col">${pieces}</div>`;
+function pluralRu(n, one, few, many){
+  const mod10 = n % 10, mod100 = n % 100;
+  if(mod10===1 && mod100!==11) return one;
+  if(mod10>=2 && mod10<=4 && (mod100<10 || mod100>=20)) return few;
+  return many;
 }
 
 function renderLeaderboard(){
   const lb = computeLeaderboard();
-  const anyPoints = lb.length > 0;
-  const stacks = lb.map((p,i) => `
-    <div class="stack-col">
-      ${stackHtml(p.points, i===0? "#ffd700" : i===1 ? "#cdbf9a" : "#8a6d3b")}
-      <div class="stack-num">${p.points}</div>
-      <div class="stack-name">${esc(p.name)}</div>
-    </div>
-  `).join("");
+  const predictors = lb.filter(p => p.nights > 0).sort((a,b)=> b.points - a.points);
+  const maxPoints = Math.max(1, ...predictors.map(p=>p.points));
+  const medals = ["🥇","🥈","🥉"];
+  const predictorsHtml = predictors.map((p,i) => {
+    const pct = Math.round((p.points / maxPoints) * 100);
+    return `
+      <div class="row" style="flex-direction:column; align-items:stretch; gap:7px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:700; display:flex; align-items:center; gap:6px;">
+            <span style="min-width:22px;">${medals[i] || ('#'+(i+1))}</span> ${esc(p.name)}
+          </span>
+          <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--gold);">${p.points} ${pluralRu(p.points,'очко','очка','очков')}</span>
+        </div>
+        <div style="height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg, var(--gold), #7de08a); border-radius:4px;"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   const fame = lb.filter(p => p.champion+p.buster+p.bluffer > 0)
     .sort((a,b)=> (b.champion+b.buster+b.bluffer) - (a.champion+a.buster+a.bluffer))
@@ -622,7 +655,7 @@ function renderLeaderboard(){
         <span class="dim" style="display:flex; gap:10px;">
           ${p.champion? `<span class="suit-gold">${p.champion}× чемпион</span>`:''}
           ${p.buster? `<span class="suit-red">${p.buster}× первый вылет</span>`:''}
-          ${p.bluffer? `<span class="suit-gold">${p.bluffer}× блеф</span>`:''}
+          ${p.bluffer? `<span class="suit-gold">${p.bluffer}× лучшая раздача</span>`:''}
         </span>
       </div>
     `).join("");
@@ -637,15 +670,15 @@ function renderLeaderboard(){
         <span class="dim" style="display:flex; gap:10px; align-items:center;">
           <span>${p.moneyNights} вечеров</span>
           <span>${p.rebuys} докупок</span>
-          <span style="color:${net>=0?'#8fd694':'#ff6b6b'}; font-family:'Courier New', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+          <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
         </span>
       </div>
     `;}).join("");
 
   return `
     <div class="panel">
-      <div class="section-label">Самые точные прогнозы (очки тотализатора)</div>
-      ${anyPoints ? `<div class="stacks">${stacks}</div>` : `<p class="dim">Очков пока нет — они появятся после первого закрытого вечера.</p>`}
+      <div class="section-label">Самые точные прогнозы</div>
+      ${predictorsHtml || `<p class="dim">Очков пока нет — они появятся после первого закрытого вечера.</p>`}
     </div>
     <div class="panel">
       <div class="section-label">Зал славы (реальные результаты)</div>
@@ -667,17 +700,20 @@ function renderHistory(){
     const participants = s.participants || [];
     const rebuys = s.rebuys || {};
     const total = participants.reduce((sum,p) => sum + (1+(rebuys[p]||0)) * (s.buyIn||0), 0);
-    const picksHtml = Object.entries(s.picks).map(([player,pick]) => `
-      <div class="row" style="background:transparent; padding:4px 0;">
-        <span class="dim">${esc(player)}</span>
-        <span style="display:flex; gap:10px;">
-          ${CATS.map(c => {
-            const correct = pick[c.key] === s.results[c.key];
-            return `<span style="color:${correct?'#ffd700':'#cdbf9a'};font-size:12px;">${correct?'✓':'✕'} ${esc(pick[c.key]||'—')}</span>`;
-          }).join("")}
-        </span>
-      </div>
-    `).join("");
+    const picksHtml = `
+      <div class="dim" style="margin-bottom:8px;">🎯 Прогнозы игроков</div>
+      ${Object.keys(s.picks).length ? Object.entries(s.picks).map(([player,pick]) => `
+        <div class="row" style="background:transparent; padding:4px 0;">
+          <span class="dim">${esc(player)}</span>
+          <span style="display:flex; gap:10px;">
+            ${CATS.map(c => {
+              const correct = pick[c.key] === s.results[c.key];
+              return `<span title="${esc(c.label)}" style="color:${correct?'var(--gold)':'var(--cream-dim)'};font-size:12px;">${c.suit} ${correct?'✓':'✕'} ${esc(pick[c.key]||'—')}</span>`;
+            }).join("")}
+          </span>
+        </div>
+      `).join("") : `<p class="dim">В этот вечер никто не делал прогнозов.</p>`}
+    `;
     const moneyHtml = participants.length ? `
       <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
         <div class="dim" style="margin-bottom:6px;">💰 Бай-ин ${s.buyIn||0} ₽ · банк ${total} ₽</div>
@@ -691,7 +727,7 @@ function renderHistory(){
             <span class="dim" style="display:flex; gap:8px; align-items:center;">
               <span>докупок: ${rebuys[p]||0}</span>
               <span>получил ${won} ₽</span>
-              <span style="color:${net>=0?'#8fd694':'#ff6b6b'}; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+              <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
             </span>
           </div>
         `;}).join("")}
@@ -699,16 +735,20 @@ function renderHistory(){
     ` : "";
     return `
       <div class="panel">
-        <div class="row" style="background:transparent; cursor:pointer; padding:0;" onclick="toggleHistory('${s.id}')">
-          <span style="font-weight:bold;">${fmtDate(s.date)}</span>
-          <span style="display:flex; align-items:center; gap:10px;">
-            <span style="display:flex; gap:8px; font-size:12px;">
-              ${CATS.map(c=>`<span class="${c.cls}">${esc(s.results[c.key])}</span>`).join("")}
-            </span>
-            <span class="del" title="Удалить вечер" onclick="event.stopPropagation(); deleteSession('${s.id}')">✕</span>
-          </span>
+        <div class="row" style="background:transparent; padding:0; margin-bottom:10px;">
+          <span style="font-weight:700;">${fmtDate(s.date)}</span>
+          <span class="del" title="Удалить вечер" onclick="deleteSession('${s.id}')">✕</span>
         </div>
-        ${open ? `<div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">${picksHtml}</div>${moneyHtml}` : ``}
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+          ${CATS.map(c => `
+            <div class="row" style="background:rgba(255,255,255,0.03);">
+              <span class="dim" style="display:flex; align-items:center; gap:7px;"><span class="${c.cls}" style="font-size:15px;">${c.suit}</span> ${c.label}</span>
+              <span style="font-weight:700; color:var(--cream);">${esc(s.results[c.key]||'—')}</span>
+            </div>
+          `).join("")}
+        </div>
+        <button class="btn ghost block" onclick="toggleHistory('${s.id}')">${open ? 'Скрыть прогнозы и деньги' : 'Прогнозы и деньги »'}</button>
+        ${open ? `<div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">${picksHtml}</div>${moneyHtml}` : ``}
       </div>
     `;
   }).join("");
