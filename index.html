@@ -312,6 +312,13 @@ const state = {
   payouts: {},
   newBuyIn: 500,
   expandedHistory: null,
+  hallTab: "champion",
+  expandedFinanceUser: null,
+
+  myStatsLoading: false,
+  myStatsByTeam: [],
+  myStatsOverall: { totalNet: 0, gamesCount: 0 },
+  expandedProfileTeam: null,
 };
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
@@ -436,7 +443,7 @@ async function onAuthReady(session){
 
 function nameFromRecord(r){
   if(!r) return "";
-  return r.nickname || [r.firstName, r.lastName].filter(Boolean).join(" ") || r.username;
+  return [r.firstName, r.lastName].filter(Boolean).join(" ") || r.nickname || r.username;
 }
 function myDisplayName(){ return nameFromRecord(state.profile); }
 function displayNameFor(username){
@@ -450,8 +457,40 @@ function openSettings(){
   state.settingsError=""; state.settingsNotice=""; state.passwordError=""; state.passwordNotice="";
   state.settingsOpen = true;
   render();
+  loadMyCrossTeamStats();
 }
 function closeSettings(){ state.settingsOpen = false; render(); }
+
+function toggleProfileTeam(teamId){ state.expandedProfileTeam = state.expandedProfileTeam===teamId ? null : teamId; render(); }
+
+async function loadMyCrossTeamStats(){
+  state.myStatsLoading = true; render();
+  const results = [];
+  for(const t of state.teams){
+    const { data } = await supabaseClient.from("board").select("data").eq("id", t.id).maybeSingle();
+    const sessions = (data?.data?.sessions || []).filter(s => s.status === "completed");
+    const games = [];
+    sessions.forEach(s => {
+      const participants = s.participants || [];
+      if(participants.includes(state.profile.username)){
+        const rebuys = (s.rebuys && s.rebuys[state.profile.username]) || 0;
+        const spent = (1+rebuys) * (s.buyIn||0);
+        const won = (s.payouts && s.payouts[state.profile.username]) || 0;
+        games.push({ date: s.date, net: won - spent });
+      }
+    });
+    games.sort((a,b)=> a.date < b.date ? 1 : -1);
+    const totalNet = games.reduce((sum,g)=>sum+g.net, 0);
+    results.push({ teamId: t.id, teamName: t.name, role: t.role, games, totalNet });
+  }
+  state.myStatsByTeam = results;
+  state.myStatsOverall = {
+    totalNet: results.reduce((s,r)=>s+r.totalNet, 0),
+    gamesCount: results.reduce((s,r)=>s+r.games.length, 0),
+  };
+  state.myStatsLoading = false;
+  render();
+}
 
 async function saveProfileSettings(){
   state.settingsError=""; state.settingsNotice="";
@@ -669,17 +708,12 @@ function setBuyInAmount(value){
   saveData();
 }
 
-function chooseMe(name){
-  state.me = name;
-  const os = openSession();
-  state.picks = (os && os.picks[name]) ? {...os.picks[name]} : {champion:"", buster:"", bluffer:""};
-  render();
-}
 function setPick(cat, name){ state.picks[cat] = name; render(); }
 function submitPicks(){
   const os = openSession();
-  if(!os || !state.me || !state.picks.champion || !state.picks.buster || !state.picks.bluffer) return;
-  os.picks[state.me] = {...state.picks};
+  const my = state.profile?.username || "";
+  if(!os || !my || !state.picks.champion || !state.picks.buster || !state.picks.bluffer) return;
+  os.picks[my] = {...state.picks};
   saveData(); render();
 }
 
@@ -749,6 +783,20 @@ function pluralRu(n, one, few, many){
   return many;
 }
 
+function setHallTab(key){ state.hallTab = key; render(); }
+function toggleFinanceUser(username){ state.expandedFinanceUser = state.expandedFinanceUser===username ? null : username; render(); }
+function financeGamesFor(username){
+  return completedSessions()
+    .filter(s => (s.participants||[]).includes(username))
+    .map(s => {
+      const rebuys = (s.rebuys && s.rebuys[username]) || 0;
+      const spent = (1+rebuys) * (s.buyIn||0);
+      const won = (s.payouts && s.payouts[username]) || 0;
+      return { date: s.date, net: won - spent };
+    })
+    .sort((a,b)=> a.date < b.date ? 1 : -1);
+}
+
 // ======================================================================
 // render: auth screens
 // ======================================================================
@@ -797,7 +845,7 @@ function renderAccountBar(){
   const teamName = state.teams.find(t=>t.id===state.activeTeamId)?.name;
   return `
     <div class="row">
-      <span class="dim">👤 ${esc(myDisplayName())}${teamName? " · "+esc(teamName) : ""}</span>
+      <span class="dim">👤 ${esc(myDisplayName())}${teamName? " · 👥 "+esc(teamName) : ""}</span>
       <span style="display:flex; align-items:center; gap:14px;">
         <span class="del" title="Настройки профиля" onclick="openSettings()">⚙️</span>
         <span class="del" title="Выйти" onclick="logout()">Выйти</span>
@@ -829,6 +877,38 @@ function renderSettings(){
       </div>
       <button class="btn gold block" onclick="changePasswordSubmit()">Сменить пароль</button>
     </div>
+    <div class="panel">
+      <div class="section-label">Мои команды и финансы</div>
+      ${state.myStatsLoading ? `<p class="dim">Загрузка статистики…</p>` : `
+        <div class="row" style="background:rgba(255,255,255,0.02); margin-bottom:10px;">
+          <span class="dim">Всего игр во всех командах</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:${state.myStatsOverall.totalNet>=0?'#7CFFC4':'var(--red)'};">
+            ${state.myStatsOverall.gamesCount} · ${state.myStatsOverall.totalNet>=0?'+':''}${state.myStatsOverall.totalNet} ₽
+          </span>
+        </div>
+        ${state.myStatsByTeam.length ? state.myStatsByTeam.map(t => {
+          const open = state.expandedProfileTeam === t.teamId;
+          return `
+            <div class="row" style="flex-direction:column; align-items:stretch; cursor:pointer;" onclick="toggleProfileTeam('${t.teamId}')">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:600;">${esc(t.teamName)}${t.role==='owner'?' 👑':''}</span>
+                <span style="font-family:'JetBrains Mono', monospace; color:${t.totalNet>=0?'#7CFFC4':'var(--red)'};">${t.totalNet>=0?'+':''}${t.totalNet} ₽</span>
+              </div>
+              ${open ? `
+                <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
+                  ${t.games.length ? t.games.map(g => `
+                    <div class="dim" style="display:flex; justify-content:space-between; font-size:12px;">
+                      <span>${fmtDate(g.date)}</span>
+                      <span style="color:${g.net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
+                    </div>
+                  `).join("") : `<p class="dim">Игр в этой команде не было.</p>`}
+                </div>
+              ` : ``}
+            </div>
+          `;
+        }).join("") : `<p class="dim">Вы пока не состоите ни в одной команде.</p>`}
+      `}
+    </div>
   `;
 }
 
@@ -850,6 +930,12 @@ function renderTonight(){
   const os = openSession();
   const roster = state.members;
   const activePlayers = (os && os.participants && os.participants.length) ? os.participants : roster;
+  const my = state.profile?.username || "";
+
+  if(os && !state.resultsMode && state.me !== my){
+    state.me = my;
+    state.picks = (os.picks[my]) ? {...os.picks[my]} : {champion:"", buster:"", bluffer:""};
+  }
 
   if(!os){
     return `<div class="panel center">
@@ -881,24 +967,25 @@ function renderTonight(){
   }
 
   const lockedCount = Object.keys(os.picks||{}).length;
+  const iAmPlaying = activePlayers.includes(my);
   return `
     ${renderMoneyPanel(os, roster)}
     <div class="panel">
       <div class="section-label"><span>${fmtDate(os.date)} — приём прогнозов</span><span class="dim">${lockedCount}/${activePlayers.length} готово</span></div>
-      ${activePlayers.length < roster.length ? `<p class="dim" style="margin-top:-6px; margin-bottom:10px;">Играют сегодня: ${activePlayers.map(esc).join(", ")}</p>` : ``}
-      <div class="section-label" style="margin-top:12px;">Кто голосует</div>
+      ${activePlayers.length < roster.length ? `<p class="dim" style="margin-top:-6px; margin-bottom:10px;">Играют сегодня: ${activePlayers.map(p=>displayNameFor(p)).join(", ")}</p>` : ``}
+      <div class="section-label" style="margin-top:12px;">Кто уже проголосовал</div>
       <div class="chip-group">
-        ${activePlayers.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(displayNameFor(p))}</span>`).join("")}
+        ${activePlayers.map(p => `<span class="chip" style="cursor:default;">${os.picks[p]?'✓ ':''}${esc(displayNameFor(p))}</span>`).join("")}
       </div>
-      ${state.me ? `
+      ${iAmPlaying ? `
         ${CATS.map(c => `
           <div class="cat-title"><span class="${c.cls}">${c.suit}</span> ${c.label} <span class="dim">— ${c.hint}</span></div>
           ${chipRow(c.key, state.picks[c.key], activePlayers, "setPick")}
         `).join("")}
         <button class="btn gold block" ${(!state.picks.champion||!state.picks.buster||!state.picks.bluffer)?'disabled':''} onclick="submitPicks()">
-          ${os.picks[state.me] ? "Обновить мои прогнозы" : "Зафиксировать мои прогнозы"}
+          ${os.picks[my] ? "Обновить мои прогнозы" : "Зафиксировать мои прогнозы"}
         </button>
-      ` : ``}
+      ` : `<p class="dim">Вы не отмечены как играющий сегодня — отметьте себя в разделе «Деньги» выше, чтобы делать прогнозы.</p>`}
     </div>
     <button class="btn ghost block" onclick="toggleResultsMode(true)">Игра окончена — ввести результаты »</button>
   `;
@@ -1001,31 +1088,47 @@ function renderLeaderboard(){
     `;
   }).join("");
 
-  const fame = lb.filter(p => p.champion+p.buster+p.bluffer > 0)
-    .sort((a,b)=> (b.champion+b.buster+b.bluffer) - (a.champion+a.buster+a.bluffer))
+  const hallTabs = [
+    { key:"champion", label:"Чемпионы" },
+    { key:"bluffer", label:"Лучшая раздача" },
+    { key:"buster", label:"Первый вылет" },
+  ];
+  const hallKey = state.hallTab || "champion";
+  const hallList = lb.filter(p => p[hallKey] > 0)
+    .sort((a,b)=> b[hallKey] - a[hallKey])
     .map(p => `
       <div class="row">
         <span style="font-weight:bold;">${esc(displayNameFor(p.name))}</span>
-        <span class="dim" style="display:flex; gap:10px;">
-          ${p.champion? `<span class="suit-gold">${p.champion}× чемпион</span>`:''}
-          ${p.buster? `<span class="suit-red">${p.buster}× первый вылет</span>`:''}
-          ${p.bluffer? `<span class="suit-gold">${p.bluffer}× лучшая раздача</span>`:''}
-        </span>
+        <span class="${hallKey==='buster'?'suit-red':'suit-gold'}" style="font-family:'JetBrains Mono', monospace; font-weight:700;">${p[hallKey]}×</span>
       </div>
     `).join("");
 
-  const money = lb.filter(p => p.moneyNights > 0)
+  const moneyList = lb.filter(p => p.moneyNights > 0)
     .sort((a,b)=> (b.won-b.spent) - (a.won-a.spent))
     .map(p => {
       const net = p.won - p.spent;
+      const open = state.expandedFinanceUser === p.name;
+      const games = open ? financeGamesFor(p.name) : [];
       return `
-      <div class="row">
-        <span style="font-weight:bold;">${esc(displayNameFor(p.name))}</span>
-        <span class="dim" style="display:flex; gap:10px; align-items:center;">
-          <span>${p.moneyNights} вечеров</span>
-          <span>${p.rebuys} докупок</span>
-          <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
-        </span>
+      <div class="row" style="flex-direction:column; align-items:stretch; cursor:pointer;" onclick="toggleFinanceUser('${esc(p.name)}')">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:bold;">${esc(displayNameFor(p.name))}</span>
+          <span class="dim" style="display:flex; gap:10px; align-items:center;">
+            <span>${p.moneyNights} вечеров</span>
+            <span>${p.rebuys} докупок</span>
+            <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+          </span>
+        </div>
+        ${open ? `
+          <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
+            ${games.length ? games.map(g => `
+              <div class="dim" style="display:flex; justify-content:space-between; font-size:12px;">
+                <span>${fmtDate(g.date)}</span>
+                <span style="color:${g.net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
+              </div>
+            `).join("") : `<p class="dim">Игр не найдено.</p>`}
+          </div>
+        ` : ``}
       </div>
     `;}).join("");
 
@@ -1035,12 +1138,15 @@ function renderLeaderboard(){
       ${predictorsHtml || `<p class="dim">Очков пока нет — они появятся после первого закрытого вечера.</p>`}
     </div>
     <div class="panel">
-      <div class="section-label">Зал славы (реальные результаты)</div>
-      ${fame || `<p class="dim">В зале славы пока никого нет.</p>`}
+      <div class="section-label">Зал славы</div>
+      <div class="chip-group">
+        ${hallTabs.map(t => `<span class="chip ${hallKey===t.key?'active':''}" onclick="setHallTab('${t.key}')">${t.label}</span>`).join("")}
+      </div>
+      ${hallList || `<p class="dim">Пока никого нет в этой категории.</p>`}
     </div>
     <div class="panel">
       <div class="section-label">💰 Финансы</div>
-      ${money || `<p class="dim">Пока никто не платил бай-ин.</p>`}
+      ${moneyList || `<p class="dim">Пока никто не платил бай-ин.</p>`}
     </div>
     ${completedSessions().length ? `<button class="btn ghost block" onclick="clearAllHistory()">Очистить всю статистику</button>` : ``}
   `;
