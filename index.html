@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Покер для своих</title>
+<title>На Ривере</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -238,7 +238,7 @@
 <div class="wrap">
 
   <div class="banner">
-    <h1>Покер для своих</h1>
+    <h1>На Ривере</h1>
     <p>Покерные вечера в кругу друзей</p>
   </div>
 
@@ -284,8 +284,9 @@ const state = {
   profile: null,
 
   authView: "login",
-  authForm: { username:"", password:"", password2:"" },
+  authForm: { username:"", email:"", password:"", password2:"" },
   authError: "", authNotice: "", authBusy: false,
+  resetToken: null,
 
   teams: [],
   activeTeamId: null,
@@ -334,10 +335,15 @@ function esc(s){ return (s||"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;
 // auth actions
 // ======================================================================
 async function registerSubmit(){
-  const { username, password, password2 } = state.authForm;
+  const { username, email, password, password2 } = state.authForm;
   state.authError = ""; state.authNotice = "";
   const slug = usernameToSlug(username);
   if(!slug){ state.authError = "Логин должен содержать латинские буквы или цифры."; render(); return; }
+  const emailTrimmed = (email||"").trim();
+  if(!emailTrimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)){
+    state.authError = "Введите настоящую почту — на неё придут письма с подтверждением и восстановлением пароля.";
+    render(); return;
+  }
   if(password.length < 4){ state.authError = "Пароль должен быть не короче 4 символов."; render(); return; }
   if(password !== password2){ state.authError = "Пароли не совпадают — проверьте оба поля."; render(); return; }
 
@@ -356,15 +362,17 @@ async function registerSubmit(){
     render(); return;
   }
 
-  const { error: profErr } = await supabaseClient.from("profiles").insert({ id: data.user.id, username: slug });
+  const { error: profErr } = await supabaseClient.from("profiles").insert({ id: data.user.id, username: slug, email: emailTrimmed });
   if(profErr){
     state.authBusy = false;
     state.authError = "Аккаунт создан, но профиль не сохранился: " + profErr.message;
     render(); return;
   }
 
+  try{ await supabaseClient.functions.invoke("send-welcome-email", { body: { email: emailTrimmed, username: slug } }); }catch(e){ /* письмо не критично для регистрации */ }
+
   state.authBusy = false;
-  state.authForm = { username:"", password:"", password2:"" };
+  state.authForm = { username:"", email:"", password:"", password2:"" };
 
   if(data.session){
     state.authNotice = "Готово! Вы зарегистрированы и вошли в аккаунт.";
@@ -387,29 +395,46 @@ async function loginSubmit(){
   state.authBusy = false;
 
   if(error){ state.authError = "Неверный логин или пароль."; render(); return; }
-  state.authForm = { username:"", password:"", password2:"" };
+  state.authForm = { username:"", email:"", password:"", password2:"" };
   await onAuthReady(data.session);
 }
 
 function switchAuthView(v){ state.authView = v; state.authError=""; state.authNotice=""; render(); }
 
-async function forgotPasswordSubmit(){
-  const { username, password, password2 } = state.authForm;
+async function requestPasswordResetSubmit(){
   state.authError = ""; state.authNotice = "";
-  const slug = usernameToSlug(username);
+  const slug = usernameToSlug(state.authForm.username);
   if(!slug){ state.authError = "Введите ваш логин."; render(); return; }
+
+  state.authBusy = true; render();
+  const resetUrlBase = location.origin + location.pathname;
+  try{
+    await supabaseClient.functions.invoke("request-password-reset", { body: { username: slug, resetUrlBase } });
+  }catch(e){}
+  state.authBusy = false;
+  state.authForm.username = "";
+  state.authNotice = "Если для этого логина указана почта — на неё отправлено письмо со ссылкой для сброса пароля. Проверьте папку «Спам», если не видите его.";
+  render();
+}
+
+async function confirmPasswordResetSubmit(){
+  state.authError = ""; state.authNotice = "";
+  const { password, password2 } = state.authForm;
   if(password.length < 4){ state.authError = "Пароль должен быть не короче 4 символов."; render(); return; }
   if(password !== password2){ state.authError = "Пароли не совпадают — проверьте оба поля."; render(); return; }
 
   state.authBusy = true; render();
-  const { data, error } = await supabaseClient.functions.invoke("forgot-password", { body: { username: slug, newPassword: password } });
+  const { data, error } = await supabaseClient.functions.invoke("confirm-password-reset", { body: { token: state.resetToken, newPassword: password } });
   state.authBusy = false;
 
   if(error || (data && data.error)){
-    state.authError = data?.error || error?.message || "Не удалось сбросить пароль.";
+    state.authError = data?.error || error?.message || "Не удалось сбросить пароль. Возможно, ссылка устарела — запросите новую.";
     render(); return;
   }
-  state.authForm = { username:"", password:"", password2:"" };
+
+  state.resetToken = null;
+  try{ history.replaceState({}, "", location.pathname); }catch(e){}
+  state.authForm = { username:"", email:"", password:"", password2:"" };
   state.authNotice = "Пароль обновлён — теперь войдите с новым паролем.";
   state.authView = "login";
   render();
@@ -854,6 +879,22 @@ function financeGamesFor(username){
 // ======================================================================
 // render: auth screens
 // ======================================================================
+function renderResetConfirmScreen(){
+  return `
+    <div class="panel">
+      <div class="section-label">Новый пароль</div>
+      ${state.authError ? `<p class="msg-error">${esc(state.authError)}</p>` : ``}
+      ${state.authNotice ? `<p class="msg-ok">${esc(state.authNotice)}</p>` : ``}
+      <p class="dim" style="margin-bottom:12px;">Вы перешли по ссылке из письма — задайте новый пароль.</p>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+        <input type="password" placeholder="Новый пароль" value="${esc(state.authForm.password)}" oninput="state.authForm.password=this.value">
+        <input type="password" placeholder="Повторите новый пароль" value="${esc(state.authForm.password2)}" oninput="state.authForm.password2=this.value">
+      </div>
+      <button class="btn gold block" ${state.authBusy?'disabled':''} onclick="confirmPasswordResetSubmit()">Сохранить новый пароль</button>
+    </div>
+  `;
+}
+
 function renderAuthScreen(){
   if(state.authView === "forgot"){
     return `
@@ -861,13 +902,11 @@ function renderAuthScreen(){
         <div class="section-label">Восстановление пароля</div>
         ${state.authError ? `<p class="msg-error">${esc(state.authError)}</p>` : ``}
         ${state.authNotice ? `<p class="msg-ok">${esc(state.authNotice)}</p>` : ``}
-        <p class="dim" style="margin-bottom:12px;">Введите свой логин и новый пароль дважды — без подтверждения по почте, просто по логину.</p>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+        <p class="dim" style="margin-bottom:12px;">Введите логин — если для него указана почта, на неё придёт письмо со ссылкой для сброса пароля.</p>
+        <div style="margin-bottom:14px;">
           <input type="text" id="authUsernameInput" placeholder="Логин" value="${esc(state.authForm.username)}" oninput="state.authForm.username=this.value">
-          <input type="password" placeholder="Новый пароль" value="${esc(state.authForm.password)}" oninput="state.authForm.password=this.value">
-          <input type="password" placeholder="Повторите новый пароль" value="${esc(state.authForm.password2)}" oninput="state.authForm.password2=this.value">
         </div>
-        <button class="btn gold block" ${state.authBusy?'disabled':''} onclick="forgotPasswordSubmit()">Сбросить пароль</button>
+        <button class="btn gold block" ${state.authBusy?'disabled':''} onclick="requestPasswordResetSubmit()">Отправить письмо</button>
         <button class="btn ghost block" style="margin-top:8px;" onclick="switchAuthView('login')">← Назад ко входу</button>
       </div>
     `;
@@ -881,6 +920,7 @@ function renderAuthScreen(){
       ${state.authNotice ? `<p class="msg-ok">${esc(state.authNotice)}</p>` : ``}
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
         <input type="text" id="authUsernameInput" placeholder="Логин (латиница, цифры)" value="${esc(state.authForm.username)}" oninput="state.authForm.username=this.value">
+        ${!isLogin ? `<input type="text" placeholder="Настоящая почта (для писем)" value="${esc(state.authForm.email)}" oninput="state.authForm.email=this.value">` : ``}
         <input type="password" placeholder="Пароль" value="${esc(state.authForm.password)}" oninput="state.authForm.password=this.value">
         ${!isLogin ? `<input type="password" placeholder="Повторите пароль" value="${esc(state.authForm.password2)}" oninput="state.authForm.password2=this.value">` : ``}
       </div>
@@ -1347,6 +1387,12 @@ function render(){
   const tabsEl = document.getElementById("tabs");
   const contentEl = document.getElementById("content");
 
+  if(state.resetToken){
+    accountBarEl.innerHTML = ""; tabsEl.innerHTML = "";
+    contentEl.innerHTML = renderResetConfirmScreen();
+    return;
+  }
+
   if(state.booting){
     accountBarEl.innerHTML = ""; tabsEl.innerHTML = "";
     contentEl.innerHTML = `<div class="panel center"><p>Загрузка…</p></div>`;
@@ -1411,6 +1457,14 @@ async function initApp(){
     }
   });
 }
+
+try{
+  const params = new URLSearchParams(location.search);
+  const t = params.get("reset");
+  if(t) state.resetToken = t;
+}catch(e){}
+if(state.resetToken) render();
+
 initApp();
 </script>
 </body>
