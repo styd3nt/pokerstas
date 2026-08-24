@@ -291,6 +291,8 @@ const state = {
   activeTeamId: null,
   dataLoading: true,
   newTeamName: "",
+  editingTeamName: false,
+  editTeamNameValue: "",
   inviteUsername: "",
   inviteError: "",
   members: [],
@@ -544,13 +546,65 @@ async function createTeamSubmit(){
   await selectTeam(newId);
 }
 
+function startEditTeamName(){
+  const t = state.teams.find(x=>x.id===state.activeTeamId);
+  state.editingTeamName = true;
+  state.editTeamNameValue = t ? t.name : "";
+  render();
+}
+function cancelEditTeamName(){ state.editingTeamName = false; render(); }
+
+async function saveTeamName(){
+  const name = (state.editTeamNameValue||"").trim();
+  if(!name) return;
+  const { error } = await supabaseClient.from("teams").update({ name }).eq("id", state.activeTeamId);
+  if(error){ alert("Не удалось переименовать команду: " + error.message); return; }
+  state.editingTeamName = false;
+  await loadTeams();
+  render();
+}
+
+async function afterLeavingTeam(){
+  if(state.realtimeChannel){ supabaseClient.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+  state.activeTeamId = null;
+  try{ localStorage.removeItem("poker-active-team"); }catch(e){}
+  await loadTeams();
+  if(state.teams[0]){
+    await selectTeam(state.teams[0].id);
+  }else{
+    state.data = { sessions: [] };
+    state.members = []; state.membersDetailed = [];
+    state.tab = "team";
+    render();
+  }
+}
+
+async function deleteTeamSubmit(){
+  const t = state.teams.find(x=>x.id===state.activeTeamId);
+  if(!t) return;
+  if(!confirm(`Удалить команду «${t.name}» насовсем? Вся история игр, статистика и участники будут удалены безвозвратно.`)) return;
+  await supabaseClient.from("board").delete().eq("id", t.id);
+  const { error } = await supabaseClient.from("teams").delete().eq("id", t.id);
+  if(error){ alert("Не удалось удалить команду: " + error.message); return; }
+  await afterLeavingTeam();
+}
+
+async function leaveTeamSubmit(){
+  const t = state.teams.find(x=>x.id===state.activeTeamId);
+  if(!t) return;
+  if(!confirm(`Выйти из команды «${t.name}»?`)) return;
+  const { error } = await supabaseClient.from("team_members").delete().eq("team_id", t.id).eq("user_id", state.profile.id);
+  if(error){ alert("Не удалось выйти из команды: " + error.message); return; }
+  await afterLeavingTeam();
+}
+
 async function selectTeam(teamId){
   if(state.realtimeChannel){ supabaseClient.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
   state.activeTeamId = teamId;
   try{ localStorage.setItem("poker-active-team", teamId); }catch(e){}
   state.dataLoading = true;
   if(state.tab !== "team") state.tab = "tonight";
-  state.me=""; state.resultsMode=false; state.expandedHistory=null;
+  state.me=""; state.resultsMode=false; state.expandedHistory=null; state.editingTeamName=false;
   render();
 
   await loadMembers(teamId);
@@ -1237,7 +1291,18 @@ function renderTeam(){
 
     ${state.activeTeamId ? `
       <div class="panel">
-        <div class="section-label">Участники «${esc(activeTeam?.name||'')}»</div>
+        <div class="section-label">
+          ${state.editingTeamName ? `
+            <span style="display:flex; gap:8px; flex:1;">
+              <input type="text" value="${esc(state.editTeamNameValue)}" oninput="state.editTeamNameValue=this.value" style="flex:1;">
+              <button class="btn gold" style="padding:8px 14px;" onclick="saveTeamName()">✓</button>
+              <button class="btn ghost" style="padding:8px 14px;" onclick="cancelEditTeamName()">✕</button>
+            </span>
+          ` : `
+            <span>Участники «${esc(activeTeam?.name||'')}»</span>
+            ${isOwner ? `<span class="dim" style="cursor:pointer;" onclick="startEditTeamName()">✏️ переименовать</span>` : ``}
+          `}
+        </div>
         ${state.membersDetailed.map(m => `
           <div class="row">
             <span>${esc(nameFromRecord(m))}${m.role==='owner'?' 👑':''}</span>
@@ -1258,6 +1323,12 @@ function renderTeam(){
             </div>
           </div>
         ` : `<p class="dim" style="margin-top:8px;">Приглашать новых участников может только владелец команды.</p>`}
+      </div>
+
+      <div class="panel">
+        ${isOwner
+          ? `<button class="btn ghost block" onclick="deleteTeamSubmit()" style="color:var(--red);">Удалить команду навсегда</button>`
+          : `<button class="btn ghost block" onclick="leaveTeamSubmit()">Выйти из команды</button>`}
       </div>
     ` : `<div class="panel center"><p class="dim">Вы пока не состоите ни в одной команде. Создайте свою выше или попросите владельца команды друзей пригласить вас по логину «${esc(state.profile?.username||'')}».</p></div>`}
   `;
