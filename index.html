@@ -6,33 +6,28 @@
 <title>На Ривере</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-0: #08080d;
-    --bg-1: #100f18;
-    --panel: rgba(255,255,255,0.045);
-    --panel-border: rgba(255,255,255,0.09);
-    --panel-border-hover: rgba(198,255,61,0.35);
-    --gold: #C6FF3D;
-    --gold-dark: #8FCB1F;
-    --violet: #8B5CF6;
-    --violet-soft: #6D4FD1;
-    --cream: #F4F4F8;
-    --cream-dim: #8C8CA0;
-    --red: #FF3E88;
-    --red-dark: #B01E5C;
-    --ink: #0A0A0F;
+    --bg-0: #141110;
+    --bg-1: #1C1611;
+    --panel: rgba(255,247,235,0.035);
+    --panel-border: rgba(255,247,235,0.08);
+    --panel-border-hover: rgba(200,154,82,0.35);
+    --gold: #C89A52;
+    --gold-dark: #A67632;
+    --cream: #EDE4D6;
+    --cream-dim: #9C9184;
+    --red: #BD5A36;
+    --red-dark: #8F3F26;
+    --ink: #16130F;
+    --icon-tint: #B8A47A;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;}
   body{
     font-family: 'Inter', system-ui, sans-serif;
-    background:
-      radial-gradient(circle at 15% 0%, rgba(139,92,246,0.20), transparent 45%),
-      radial-gradient(circle at 90% 10%, rgba(198,255,61,0.12), transparent 40%),
-      radial-gradient(circle at 50% 100%, rgba(139,92,246,0.10), transparent 50%),
-      var(--bg-0);
+    background: radial-gradient(ellipse at 50% -10%, var(--bg-1), var(--bg-0) 60%);
     background-attachment: fixed;
     color: var(--cream);
     min-height:100vh;
@@ -40,53 +35,63 @@
     -webkit-font-smoothing: antialiased;
   }
   .felt-dots{
-    position:fixed; inset:0; pointer-events:none; opacity:.5;
-    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    position:fixed; inset:0; pointer-events:none; opacity:.4;
+    background-image: radial-gradient(rgba(255,247,235,0.04) 1px, transparent 1px);
     background-size: 22px 22px;
   }
   .wrap{ max-width: 620px; margin: 0 auto; position:relative; z-index:1; }
 
   /* ---- header banner ---- */
   .banner{
-    background: linear-gradient(160deg, rgba(139,92,246,0.16), rgba(198,255,61,0.06));
-    border: 1px solid var(--panel-border);
-    border-radius: 22px;
-    padding: 22px 16px 18px;
-    text-align:center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-    margin-bottom: 16px;
     position: relative;
     overflow: hidden;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    padding: 30px 18px 24px;
+    text-align:center;
+    margin-bottom: 16px;
   }
   .banner::before{
     content:"";
-    position:absolute; top:-40%; left:50%; transform:translateX(-50%);
-    width:280px; height:180px;
-    background: radial-gradient(circle, rgba(198,255,61,0.25), transparent 65%);
+    position:absolute; top:-35%; left:50%; transform:translateX(-50%);
+    width:320px; height:220px;
+    background: radial-gradient(circle, rgba(200,154,82,0.16), transparent 70%);
+    pointer-events:none;
+  }
+  .banner .smoke{
+    position:absolute; top:6px; right:10px;
+    width:64px; height:104px;
+    opacity:.16;
     pointer-events:none;
   }
   .banner h1{
     margin:0;
     position:relative;
-    font-family: 'Sora', sans-serif;
-    font-weight: 800;
-    font-size: 28px;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 32px;
     line-height:1.15;
-    letter-spacing: -0.3px;
-    background: linear-gradient(95deg, var(--gold) 0%, #eaff9e 30%, var(--violet) 75%, #c9aeff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    letter-spacing: -0.2px;
+    color: var(--cream);
   }
-  .banner p{
-    margin: 8px 0 0;
+  .brand-rule{
+    width:34px; height:2px;
+    background: var(--gold);
+    opacity:.75;
+    margin: 14px auto 0;
+  }
+  .banner .tagline{
+    margin: 12px 0 0;
     position:relative;
     color: var(--cream-dim);
-    font-size: 13px;
-    letter-spacing: 0.2px;
-    font-weight:500;
-    font-family:'Inter', sans-serif;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 14px;
+    line-height:1.55;
   }
+  .banner .tagline b{ color: var(--cream); font-weight:500; font-style:normal; }
 
   /* ---- account bar ---- */
   #accountBar .row{ margin-bottom: 14px; }
@@ -96,50 +101,44 @@
     display:flex; gap:4px; margin-bottom:16px;
     background: var(--panel);
     border: 1px solid var(--panel-border);
-    border-radius: 16px;
+    border-radius: 14px;
     padding: 5px;
-    backdrop-filter: blur(16px);
   }
   .tab-btn{
     flex:1;
     padding: 10px 4px;
-    border-radius: 12px;
+    border-radius: 10px;
     border: none;
-    font-family:'Sora', sans-serif;
-    font-weight: 700;
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    font-family:'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.1px;
     cursor:pointer;
     background: transparent;
     color: var(--cream-dim);
-    transition: all .15s ease;
+    transition: background .15s ease, color .15s ease;
   }
   .tab-btn.active{
-    background: linear-gradient(120deg, var(--gold), #a8f23e 55%, #7de08a);
+    background: var(--gold);
     color: var(--ink);
-    box-shadow: 0 4px 14px rgba(198,255,61,0.25);
   }
 
-  /* ---- panel (glass card) ---- */
+  /* ---- panel (card) ---- */
   .panel{
     background: var(--panel);
     border: 1px solid var(--panel-border);
-    border-radius: 20px;
+    border-radius: 16px;
     padding: 18px;
     margin-bottom: 14px;
-    backdrop-filter: blur(18px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
   }
   .section-label{
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
+    font-size: 15px;
+    font-weight: 500;
+    font-style: italic;
     color: var(--cream);
     margin-bottom: 12px;
     display:flex; align-items:center; justify-content:space-between; gap:6px;
-    font-family:'Sora', sans-serif;
+    font-family:'Fraunces', serif;
   }
   .dim{ color: var(--cream-dim); font-size:12px; }
   .center{ text-align:center; }
@@ -148,26 +147,25 @@
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:6px;
     padding: 11px 20px;
-    border-radius: 999px;
+    border-radius: 10px;
     border: 1px solid transparent;
-    background: rgba(255,255,255,0.06);
+    background: rgba(255,247,235,0.06);
     color: var(--cream);
-    font-family:'Sora', sans-serif;
-    font-weight: 700;
+    font-family:'Inter', sans-serif;
+    font-weight: 600;
     font-size: 13px;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.1px;
     cursor: pointer;
-    transition: transform .1s ease, box-shadow .15s ease;
+    transition: opacity .12s ease;
   }
-  .btn:active{ transform: scale(0.97); }
+  .btn:active{ opacity:.8; }
   .btn:disabled{ opacity:.4; cursor:not-allowed; }
   .btn.gold{
-    background: linear-gradient(120deg, var(--gold), #a8f23e 55%, #7de08a);
+    background: var(--gold);
     color: var(--ink);
-    box-shadow: 0 6px 18px rgba(198,255,61,0.22);
   }
   .btn.ghost{
-    background: rgba(255,255,255,0.045);
+    background: rgba(255,247,235,0.04);
     border: 1px solid var(--panel-border);
     color: var(--cream-dim);
   }
@@ -179,29 +177,28 @@
   .chip{
     display:inline-flex; align-items:center; gap:5px;
     padding: 8px 14px;
-    border-radius: 999px;
+    border-radius: 10px;
     border: 1px solid var(--panel-border);
-    background: rgba(255,255,255,0.04);
+    background: rgba(255,247,235,0.04);
     color: var(--cream);
     font-size: 13px;
-    font-weight:600;
+    font-weight:500;
     cursor:pointer;
     margin: 0 6px 6px 0;
     transition: all .12s ease;
   }
   .chip.active{
-    background: linear-gradient(120deg, var(--violet), var(--violet-soft));
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 14px rgba(139,92,246,0.35);
+    background: rgba(200,154,82,0.16);
+    color: var(--gold);
+    border-color: var(--gold-dark);
   }
   .chip-group{ margin-bottom:14px; }
-  .cat-title{ display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:700; font-size:13px; color:var(--cream); }
+  .cat-title{ display:flex; align-items:center; gap:6px; margin-bottom:6px; font-weight:600; font-size:13px; color:var(--cream); }
 
   input[type=text], input[type=password]{
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,247,235,0.05);
     border: 1px solid var(--panel-border);
-    border-radius: 999px;
+    border-radius: 10px;
     padding: 10px 14px;
     color: var(--cream);
     font-family:'Inter', sans-serif;
@@ -214,20 +211,35 @@
   /* ---- rows ---- */
   .row{
     display:flex; align-items:center; justify-content:space-between;
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 12px;
+    background: rgba(255,247,235,0.03);
+    border: 1px solid rgba(255,247,235,0.05);
+    border-radius: 10px;
     padding: 10px 14px;
     margin-bottom: 6px;
   }
-  .del{ cursor:pointer; color: var(--cream-dim); font-weight:bold; transition: color .12s ease; }
+  .del{ cursor:pointer; color: var(--icon-tint); font-weight:bold; transition: color .12s ease; }
   .del:hover{ color: var(--red); }
 
   .suit-gold{ color: var(--gold); }
+  .tag-owner{
+    display:inline-block;
+    font-family:'Inter', sans-serif;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:.2px;
+    color: var(--gold);
+    background: rgba(200,154,82,0.14);
+    border: 1px solid rgba(200,154,82,0.3);
+    border-radius: 999px;
+    padding: 2px 8px;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
   .suit-red{ color: var(--red); }
   .footer-note{ text-align:center; color:var(--cream-dim); font-size:11px; margin-top:10px; line-height:1.5; }
   .msg-error{ color: var(--red); font-size:13px; margin:0 0 10px; font-weight:600; }
-  .msg-ok{ color: #7CFFC4; font-size:13px; margin:0 0 10px; font-weight:600; }
+  .msg-ok{ color: var(--gold); font-size:13px; margin:0 0 10px; font-weight:600; }
+  .chronicle-line{ font-family:'Fraunces', serif; font-style:italic; color:var(--cream-dim); font-size:13px; line-height:1.5; margin:2px 0 12px; }
 
   ::-webkit-scrollbar{ height:6px; }
 </style>
@@ -238,8 +250,13 @@
 <div class="wrap">
 
   <div class="banner">
+    <svg class="smoke" viewBox="0 0 64 104" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 104C14 90 26 86 26 74C26 62 12 58 12 46C12 34 24 30 24 18" stroke="#EDE4D6" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M34 100C34 88 44 84 44 73C44 62 32 57 32 46" stroke="#EDE4D6" stroke-width="1" stroke-linecap="round"/>
+    </svg>
     <h1>На Ривере</h1>
-    <p>Покерные вечера в кругу друзей</p>
+    <div class="brand-rule"></div>
+    <p class="tagline">История ваших покерных вечеров</p>
   </div>
 
   <div id="accountBar"></div>
@@ -330,6 +347,34 @@ function fmtDate(iso){
   return d.toLocaleDateString("ru-RU", { weekday:"short", day:"numeric", month:"long" });
 }
 function esc(s){ return (s||"").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ---- minimal line icons (inherit color via currentColor) ----
+function iconUser(size){
+  return `<svg width="${size||14}" height="${size||14}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
+}
+function iconTeam(size){
+  return `<svg width="${size||14}" height="${size||14}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9.5" r="2.3"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/><path d="M15.2 14.8c2.7.5 4.3 2.1 4.3 5.2"/></svg>`;
+}
+function iconDice(size){
+  return `<svg width="${size||30}" height="${size||30}" viewBox="0 0 24 24">
+    <path d="M12 2L21 7L12 12L3 7L12 2Z" fill="currentColor" fill-opacity="0.9"/>
+    <path d="M3 7L12 12V22L3 17V7Z" fill="currentColor" fill-opacity="0.5"/>
+    <path d="M21 7L12 12V22L21 17V7Z" fill="currentColor" fill-opacity="0.28"/>
+    <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" fill="none" stroke="currentColor" stroke-width="0.8" stroke-linejoin="round"/>
+    <circle cx="9" cy="6.3" r="0.9" fill="#16130F"/>
+    <circle cx="12" cy="7.6" r="0.9" fill="#16130F"/>
+    <circle cx="15" cy="6.3" r="0.9" fill="#16130F"/>
+  </svg>`;
+}
+function iconSpark(size){
+  return `<svg width="${size||10}" height="${size||10}" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:1px;"><path d="M12 2c0 5-3 8-8 10 5 2 8 5 8 10 0-5 3-8 8-10-5-2-8-5-8-10z"/></svg>`;
+}
+function iconGear(size){
+  return `<svg width="${size||14}" height="${size||14}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 000-2l2.1-1.6-2-3.5-2.5 1a8 8 0 00-1.7-1L14.9 3h-4l-.4 2.9a8 8 0 00-1.7 1l-2.5-1-2 3.5L6.4 11a7.97 7.97 0 000 2l-2.1 1.6 2 3.5 2.5-1a8 8 0 001.7 1l.4 2.9h4l.4-2.9a8 8 0 001.7-1l2.5 1 2-3.5L19.4 13z"/></svg>`;
+}
+function ownerMark(){
+  return ` <span class="tag-owner">организатор</span>`;
+}
 
 // ======================================================================
 // auth actions
@@ -939,9 +984,9 @@ function renderAccountBar(){
   const teamName = state.teams.find(t=>t.id===state.activeTeamId)?.name;
   return `
     <div class="row">
-      <span class="dim">👤 ${esc(myDisplayName())}${teamName? " · 👥 "+esc(teamName) : ""}</span>
+      <span class="dim"><span style="color:var(--icon-tint);">${iconUser()}</span> ${esc(myDisplayName())}${teamName? ` · <span style="color:var(--icon-tint);">${iconTeam()}</span> `+esc(teamName) : ""}</span>
       <span style="display:flex; align-items:center; gap:14px;">
-        <span class="del" title="Настройки профиля" onclick="openSettings()">⚙️</span>
+        <span class="del" title="Настройки профиля" onclick="openSettings()">${iconGear()}</span>
         <span class="del" title="Выйти" onclick="logout()">Выйти</span>
       </span>
     </div>
@@ -976,7 +1021,7 @@ function renderSettings(){
       ${state.myStatsLoading ? `<p class="dim">Загрузка статистики…</p>` : `
         <div class="row" style="background:rgba(255,255,255,0.02); margin-bottom:10px;">
           <span class="dim">Всего игр во всех командах</span>
-          <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:${state.myStatsOverall.totalNet>=0?'#7CFFC4':'var(--red)'};">
+          <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:${state.myStatsOverall.totalNet>=0?'var(--gold)':'var(--red)'};">
             ${state.myStatsOverall.gamesCount} · ${state.myStatsOverall.totalNet>=0?'+':''}${state.myStatsOverall.totalNet} ₽
           </span>
         </div>
@@ -985,15 +1030,15 @@ function renderSettings(){
           return `
             <div class="row" style="flex-direction:column; align-items:stretch; cursor:pointer;" onclick="toggleProfileTeam('${t.teamId}')">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:600;">${esc(t.teamName)}${t.role==='owner'?' 👑':''}</span>
-                <span style="font-family:'JetBrains Mono', monospace; color:${t.totalNet>=0?'#7CFFC4':'var(--red)'};">${t.totalNet>=0?'+':''}${t.totalNet} ₽</span>
+                <span style="font-weight:600;">${esc(t.teamName)}${t.role==='owner'?ownerMark():''}</span>
+                <span style="font-family:'JetBrains Mono', monospace; color:${t.totalNet>=0?'var(--gold)':'var(--red)'};">${t.totalNet>=0?'+':''}${t.totalNet} ₽</span>
               </div>
               ${open ? `
                 <div style="margin-top:8px; display:flex; flex-direction:column; gap:4px; border-top:1px solid rgba(255,255,255,0.08); padding-top:8px;">
                   ${t.games.length ? t.games.map(g => `
                     <div class="dim" style="display:flex; justify-content:space-between; font-size:12px;">
                       <span>${fmtDate(g.date)}</span>
-                      <span style="color:${g.net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
+                      <span style="color:${g.net>=0?'var(--gold)':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
                     </div>
                   `).join("") : `<p class="dim">Игр в этой команде не было.</p>`}
                 </div>
@@ -1007,7 +1052,7 @@ function renderSettings(){
 }
 
 function renderTabs(){
-  const tabs = [["tonight","Сегодня"],["leaderboard","Лидеры"],["history","История"],["team","Команда"]];
+  const tabs = [["tonight","Сегодня"],["leaderboard","Рейтинг"],["history","Хроника"],["team","Команда"]];
   return tabs.map(([k,l]) => `<button class="tab-btn ${state.tab===k?'active':''}" onclick="setTab('${k}')">${l}</button>`).join("");
 }
 
@@ -1033,7 +1078,7 @@ function renderTonight(){
 
   if(!os){
     return `<div class="panel center">
-      <div style="font-size:28px;margin-bottom:6px;">🎲</div>
+      <div style="color:var(--gold); margin-bottom:10px;">${iconDice(30)}</div>
       <p>Сегодня ещё не открыт покерный вечер.</p>
       ${roster.length < 2
         ? `<p class="dim">Пригласите минимум ещё одного друга во вкладке «Команда».</p>`
@@ -1123,7 +1168,7 @@ function renderMoneyPanel(os, roster){
           }).join("")}
         </div>
         <div class="section-label" style="margin-bottom:0;"><span>Общий банк</span><span style="color:var(--gold); font-family:'JetBrains Mono', monospace;">${total} ₽</span></div>
-      ` : `<p class="dim">Отметьте, кто сегодня играет.</p>`}
+      ` : `<p class="dim">Отметьте, кто сегодня играет — иначе банк потом придётся делить по памяти.</p>`}
     </div>
   `;
 }
@@ -1176,7 +1221,7 @@ function renderLeaderboard(){
           <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--gold);">${p.points} ${pluralRu(p.points,'очко','очка','очков')}</span>
         </div>
         <div style="height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;">
-          <div style="height:100%; width:${pct}%; background:linear-gradient(90deg, var(--gold), #7de08a); border-radius:4px;"></div>
+          <div style="height:100%; width:${pct}%; background:var(--gold); border-radius:4px;"></div>
         </div>
       </div>
     `;
@@ -1210,7 +1255,7 @@ function renderLeaderboard(){
           <span class="dim" style="display:flex; gap:10px; align-items:center;">
             <span>${p.moneyNights} вечеров</span>
             <span>${p.rebuys} докупок</span>
-            <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+            <span style="color:${net>=0?'var(--gold)':'var(--red)'}; font-family:'JetBrains Mono', monospace; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
           </span>
         </div>
         ${open ? `
@@ -1218,7 +1263,7 @@ function renderLeaderboard(){
             ${games.length ? games.map(g => `
               <div class="dim" style="display:flex; justify-content:space-between; font-size:12px;">
                 <span>${fmtDate(g.date)}</span>
-                <span style="color:${g.net>=0?'#7CFFC4':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
+                <span style="color:${g.net>=0?'var(--gold)':'var(--red)'}; font-family:'JetBrains Mono', monospace;">${g.net>=0?'+':''}${g.net} ₽</span>
               </div>
             `).join("") : `<p class="dim">Игр не найдено.</p>`}
           </div>
@@ -1229,18 +1274,18 @@ function renderLeaderboard(){
   return `
     <div class="panel">
       <div class="section-label">Самые точные прогнозы</div>
-      ${predictorsHtml || `<p class="dim">Очков пока нет — они появятся после первого закрытого вечера.</p>`}
+      ${predictorsHtml || `<p class="dim">Очков пока нет. Прогнозы появляются смелые только после того, как их можно проверить.</p>`}
     </div>
     <div class="panel">
       <div class="section-label">Зал славы</div>
       <div class="chip-group">
         ${hallTabs.map(t => `<span class="chip ${hallKey===t.key?'active':''}" onclick="setHallTab('${t.key}')">${t.label}</span>`).join("")}
       </div>
-      ${hallList || `<p class="dim">Пока никого нет в этой категории.</p>`}
+      ${hallList || `<p class="dim">В этой категории пока пусто. Скромность — тоже результат.</p>`}
     </div>
     <div class="panel">
       <div class="section-label">💰 Финансы</div>
-      ${moneyList || `<p class="dim">Пока никто не платил бай-ин.</p>`}
+      ${moneyList || `<p class="dim">Пока никто не платил бай-ин. Всё ещё впереди.</p>`}
     </div>
     ${completedSessions().length ? `<button class="btn ghost block" onclick="clearAllHistory()">Очистить всю статистику</button>` : ``}
   `;
@@ -1249,9 +1294,33 @@ function renderLeaderboard(){
 // ======================================================================
 // render: history
 // ======================================================================
+function hashStr(s){
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = ((h<<5) - h + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+function chronicleLine(s){
+  const champion = displayNameFor(s.results.champion);
+  const buster = displayNameFor(s.results.buster);
+  const bluffer = displayNameFor(s.results.bluffer);
+  const pot = sessionPot(s);
+  const templates = [
+    `${champion} снова оказался прав насчёт себя.`,
+    `${buster} вылетел первым — по расписанию.`,
+    `Банк в ${pot} ₽ нашёл нового хозяина: ${champion}.`,
+    `${bluffer} провёл раздачу вечера. Остальные делали вид, что не заметили.`,
+    `${champion} выиграл. ${buster} объяснял почему это несправедливо.`,
+    `Вечер закончился тем же, чем обычно: ${champion} наверху, ${buster} — нет.`,
+    `${bluffer} блефовал так, что поверил даже сам себе.`,
+    `Ещё один вечер, ещё один повод для ${champion} напомнить об этом всем.`,
+  ];
+  return templates[hashStr(s.id) % templates.length];
+}
+
 function renderHistory(){
   const list = completedSessions();
-  if(list.length === 0) return `<div class="panel center"><p class="dim">Записей о вечерах пока нет.</p></div>`;
+  if(list.length === 0) return `<div class="panel center"><p class="dim">Хроника пуста. Ни одного вечера ещё не закрыто — компания либо не играла, либо до сих пор спорит, кто вёл банк.</p></div>`;
   return list.map(s => {
     const open = state.expandedHistory === s.id;
     const participants = s.participants || [];
@@ -1284,7 +1353,7 @@ function renderHistory(){
             <span class="dim" style="display:flex; gap:8px; align-items:center;">
               <span>докупок: ${rebuys[p]||0}</span>
               <span>получил ${won} ₽</span>
-              <span style="color:${net>=0?'#7CFFC4':'var(--red)'}; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
+              <span style="color:${net>=0?'var(--gold)':'var(--red)'}; font-weight:bold;">${net>=0?'+':''}${net} ₽</span>
             </span>
           </div>
         `;}).join("")}
@@ -1292,10 +1361,11 @@ function renderHistory(){
     ` : "";
     return `
       <div class="panel">
-        <div class="row" style="background:transparent; padding:0; margin-bottom:10px;">
+        <div class="row" style="background:transparent; padding:0; margin-bottom:4px;">
           <span style="font-weight:700;">${fmtDate(s.date)}</span>
           <span class="del" title="Удалить вечер" onclick="deleteSession('${s.id}')">✕</span>
         </div>
+        <p class="chronicle-line">${esc(chronicleLine(s))}</p>
         <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
           ${CATS.map(c => `
             <div class="row" style="background:rgba(255,255,255,0.03);">
@@ -1321,7 +1391,7 @@ function renderTeam(){
     <div class="panel">
       <div class="section-label">Мои команды</div>
       <div class="chip-group">
-        ${state.teams.length ? state.teams.map(t=>`<span class="chip ${t.id===state.activeTeamId?'active':''}" onclick="selectTeam('${t.id}')">${esc(t.name)}${t.role==='owner'?' 👑':''}</span>`).join("") : `<p class="dim">Команд пока нет.</p>`}
+        ${state.teams.length ? state.teams.map(t=>`<span class="chip ${t.id===state.activeTeamId?'active':''}" onclick="selectTeam('${t.id}')">${esc(t.name)}${t.role==='owner'?ownerMark():''}</span>`).join("") : `<p class="dim">Команд пока нет.</p>`}
       </div>
       <div style="display:flex; gap:8px;">
         <input type="text" placeholder="Название новой команды" value="${esc(state.newTeamName)}" oninput="state.newTeamName=this.value" style="flex:1;">
@@ -1345,7 +1415,7 @@ function renderTeam(){
         </div>
         ${state.membersDetailed.map(m => `
           <div class="row">
-            <span>${esc(nameFromRecord(m))}${m.role==='owner'?' 👑':''}</span>
+            <span>${esc(nameFromRecord(m))}${m.role==='owner'?ownerMark():''}</span>
             ${isOwner && m.role!=='owner' ? `
               <span style="display:flex; gap:10px; align-items:center;">
                 <span class="dim" style="cursor:pointer;" onclick="promptResetPassword('${m.userId}','${esc(nameFromRecord(m))}')">сбросить пароль</span>
