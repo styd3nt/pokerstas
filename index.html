@@ -297,6 +297,12 @@ const state = {
   membersDetailed: [],
   realtimeChannel: null,
 
+  settingsOpen: false,
+  settingsForm: { firstName:"", lastName:"", nickname:"" },
+  settingsError: "", settingsNotice: "",
+  passwordForm: { p1:"", p2:"" },
+  passwordError: "", passwordNotice: "",
+
   data: { sessions: [] },
   tab: "tonight",
   me: "",
@@ -378,14 +384,42 @@ async function loginSubmit(){
 
 function switchAuthView(v){ state.authView = v; state.authError=""; state.authNotice=""; render(); }
 
+async function forgotPasswordSubmit(){
+  const { username, password, password2 } = state.authForm;
+  state.authError = ""; state.authNotice = "";
+  const slug = usernameToSlug(username);
+  if(!slug){ state.authError = "Введите ваш логин."; render(); return; }
+  if(password.length < 4){ state.authError = "Пароль должен быть не короче 4 символов."; render(); return; }
+  if(password !== password2){ state.authError = "Пароли не совпадают — проверьте оба поля."; render(); return; }
+
+  state.authBusy = true; render();
+  const { data, error } = await supabaseClient.functions.invoke("forgot-password", { body: { username: slug, newPassword: password } });
+  state.authBusy = false;
+
+  if(error || (data && data.error)){
+    state.authError = data?.error || error?.message || "Не удалось сбросить пароль.";
+    render(); return;
+  }
+  state.authForm = { username:"", password:"", password2:"" };
+  state.authNotice = "Пароль обновлён — теперь войдите с новым паролем.";
+  state.authView = "login";
+  render();
+}
+
 async function logout(){
   await supabaseClient.auth.signOut();
 }
 
 async function onAuthReady(session){
   state.session = session;
-  const { data: profile } = await supabaseClient.from("profiles").select("username").eq("id", session.user.id).maybeSingle();
-  state.profile = { id: session.user.id, username: profile?.username || "" };
+  const { data: profile } = await supabaseClient.from("profiles").select("username, first_name, last_name, nickname").eq("id", session.user.id).maybeSingle();
+  state.profile = {
+    id: session.user.id,
+    username: profile?.username || "",
+    firstName: profile?.first_name || "",
+    lastName: profile?.last_name || "",
+    nickname: profile?.nickname || "",
+  };
   await loadTeams();
 
   let target = null;
@@ -398,6 +432,53 @@ async function onAuthReady(session){
   state.booting = false;
   if(target){ await selectTeam(target); }
   else{ state.tab = "team"; render(); }
+}
+
+function nameFromRecord(r){
+  if(!r) return "";
+  return r.nickname || [r.firstName, r.lastName].filter(Boolean).join(" ") || r.username;
+}
+function myDisplayName(){ return nameFromRecord(state.profile); }
+function displayNameFor(username){
+  const m = state.membersDetailed.find(x=>x.username===username);
+  return m ? nameFromRecord(m) : username;
+}
+
+function openSettings(){
+  state.settingsForm = { firstName: state.profile.firstName||"", lastName: state.profile.lastName||"", nickname: state.profile.nickname||"" };
+  state.passwordForm = { p1:"", p2:"" };
+  state.settingsError=""; state.settingsNotice=""; state.passwordError=""; state.passwordNotice="";
+  state.settingsOpen = true;
+  render();
+}
+function closeSettings(){ state.settingsOpen = false; render(); }
+
+async function saveProfileSettings(){
+  state.settingsError=""; state.settingsNotice="";
+  const firstName = (state.settingsForm.firstName||"").trim();
+  const lastName = (state.settingsForm.lastName||"").trim();
+  const nickname = (state.settingsForm.nickname||"").trim();
+  if(!firstName){ state.settingsError = "Имя обязательно для заполнения."; render(); return; }
+  const { error } = await supabaseClient.from("profiles").update({
+    first_name: firstName, last_name: lastName || null, nickname: nickname || null
+  }).eq("id", state.profile.id);
+  if(error){ state.settingsError = "Не удалось сохранить: " + error.message; render(); return; }
+  state.profile.firstName = firstName; state.profile.lastName = lastName; state.profile.nickname = nickname;
+  state.settingsNotice = "Профиль обновлён.";
+  if(state.activeTeamId) await loadMembers(state.activeTeamId);
+  render();
+}
+
+async function changePasswordSubmit(){
+  state.passwordError=""; state.passwordNotice="";
+  const { p1, p2 } = state.passwordForm;
+  if((p1||"").length < 4){ state.passwordError = "Пароль должен быть не короче 4 символов."; render(); return; }
+  if(p1 !== p2){ state.passwordError = "Пароли не совпадают."; render(); return; }
+  const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+  if(error){ state.passwordError = "Не удалось сменить пароль: " + error.message; render(); return; }
+  state.passwordForm = { p1:"", p2:"" };
+  state.passwordNotice = "Пароль изменён.";
+  render();
 }
 
 // ======================================================================
@@ -414,12 +495,14 @@ async function loadTeams(){
 async function createTeamSubmit(){
   const name = (state.newTeamName||"").trim();
   if(!name) return;
-  const { data, error } = await supabaseClient.from("teams").insert({ name, owner_id: state.profile.id }).select().single();
+  const newId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"-"+Math.random().toString(16).slice(2));
+  const { error } = await supabaseClient.from("teams").insert({ id: newId, name, owner_id: state.profile.id });
   if(error){ alert("Не удалось создать команду: " + error.message); return; }
-  await supabaseClient.from("team_members").insert({ team_id: data.id, user_id: state.profile.id, role: "owner" });
+  const { error: memErr } = await supabaseClient.from("team_members").insert({ team_id: newId, user_id: state.profile.id, role: "owner" });
+  if(memErr){ alert("Команда создана, но не удалось добавить вас как владельца: " + memErr.message); return; }
   state.newTeamName = "";
   await loadTeams();
-  await selectTeam(data.id);
+  await selectTeam(newId);
 }
 
 async function selectTeam(teamId){
@@ -441,10 +524,13 @@ async function selectTeam(teamId){
 async function loadMembers(teamId){
   const { data } = await supabaseClient
     .from("team_members")
-    .select("role, user_id, profiles(username)")
+    .select("role, user_id, profiles(username, first_name, last_name, nickname)")
     .eq("team_id", teamId);
   const rows = (data||[]).filter(r=>r.profiles);
-  state.membersDetailed = rows.map(r => ({ userId:r.user_id, username:r.profiles.username, role:r.role }));
+  state.membersDetailed = rows.map(r => ({
+    userId:r.user_id, username:r.profiles.username, role:r.role,
+    firstName:r.profiles.first_name, lastName:r.profiles.last_name, nickname:r.profiles.nickname,
+  }));
   state.members = state.membersDetailed.map(m=>m.username);
 }
 
@@ -667,6 +753,24 @@ function pluralRu(n, one, few, many){
 // render: auth screens
 // ======================================================================
 function renderAuthScreen(){
+  if(state.authView === "forgot"){
+    return `
+      <div class="panel">
+        <div class="section-label">Восстановление пароля</div>
+        ${state.authError ? `<p class="msg-error">${esc(state.authError)}</p>` : ``}
+        ${state.authNotice ? `<p class="msg-ok">${esc(state.authNotice)}</p>` : ``}
+        <p class="dim" style="margin-bottom:12px;">Введите свой логин и новый пароль дважды — без подтверждения по почте, просто по логину.</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+          <input type="text" id="authUsernameInput" placeholder="Логин" value="${esc(state.authForm.username)}" oninput="state.authForm.username=this.value">
+          <input type="password" placeholder="Новый пароль" value="${esc(state.authForm.password)}" oninput="state.authForm.password=this.value">
+          <input type="password" placeholder="Повторите новый пароль" value="${esc(state.authForm.password2)}" oninput="state.authForm.password2=this.value">
+        </div>
+        <button class="btn gold block" ${state.authBusy?'disabled':''} onclick="forgotPasswordSubmit()">Сбросить пароль</button>
+        <button class="btn ghost block" style="margin-top:8px;" onclick="switchAuthView('login')">← Назад ко входу</button>
+      </div>
+    `;
+  }
+
   const isLogin = state.authView === "login";
   return `
     <div class="panel">
@@ -680,6 +784,7 @@ function renderAuthScreen(){
       </div>
       <button class="btn gold block" ${state.authBusy?'disabled':''} onclick="${isLogin?'loginSubmit()':'registerSubmit()'}">${isLogin?'Войти':'Зарегистрироваться'}</button>
       <button class="btn ghost block" style="margin-top:8px;" onclick="switchAuthView('${isLogin?'register':'login'}')">${isLogin? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}</button>
+      ${isLogin ? `<p class="dim center" style="margin-top:10px; cursor:pointer;" onclick="switchAuthView('forgot')">Забыли пароль?</p>` : ``}
     </div>
   `;
 }
@@ -692,8 +797,37 @@ function renderAccountBar(){
   const teamName = state.teams.find(t=>t.id===state.activeTeamId)?.name;
   return `
     <div class="row">
-      <span class="dim">👤 ${esc(state.profile?.username||"")}${teamName? " · "+esc(teamName) : ""}</span>
-      <span class="del" title="Выйти" onclick="logout()">Выйти</span>
+      <span class="dim">👤 ${esc(myDisplayName())}${teamName? " · "+esc(teamName) : ""}</span>
+      <span style="display:flex; align-items:center; gap:14px;">
+        <span class="del" title="Настройки профиля" onclick="openSettings()">⚙️</span>
+        <span class="del" title="Выйти" onclick="logout()">Выйти</span>
+      </span>
+    </div>
+  `;
+}
+
+function renderSettings(){
+  return `
+    <div class="panel">
+      <div class="section-label"><span>Настройки профиля</span><span class="dim" style="cursor:pointer;" onclick="closeSettings()">← Назад</span></div>
+      ${state.settingsError ? `<p class="msg-error">${esc(state.settingsError)}</p>` : ``}
+      ${state.settingsNotice ? `<p class="msg-ok">${esc(state.settingsNotice)}</p>` : ``}
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+        <input type="text" placeholder="Имя *" value="${esc(state.settingsForm.firstName)}" oninput="state.settingsForm.firstName=this.value">
+        <input type="text" placeholder="Фамилия" value="${esc(state.settingsForm.lastName)}" oninput="state.settingsForm.lastName=this.value">
+        <input type="text" placeholder="Ник, например «Король блефа»" value="${esc(state.settingsForm.nickname)}" oninput="state.settingsForm.nickname=this.value">
+      </div>
+      <button class="btn gold block" onclick="saveProfileSettings()">Сохранить</button>
+    </div>
+    <div class="panel">
+      <div class="section-label">Сменить пароль</div>
+      ${state.passwordError ? `<p class="msg-error">${esc(state.passwordError)}</p>` : ``}
+      ${state.passwordNotice ? `<p class="msg-ok">${esc(state.passwordNotice)}</p>` : ``}
+      <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+        <input type="password" placeholder="Новый пароль" value="${esc(state.passwordForm.p1)}" oninput="state.passwordForm.p1=this.value">
+        <input type="password" placeholder="Повторите новый пароль" value="${esc(state.passwordForm.p2)}" oninput="state.passwordForm.p2=this.value">
+      </div>
+      <button class="btn gold block" onclick="changePasswordSubmit()">Сменить пароль</button>
     </div>
   `;
 }
@@ -705,7 +839,7 @@ function renderTabs(){
 
 function chipRow(catKey, selected, roster, onClickName){
   return `<div class="chip-group">` +
-    roster.map(p => `<span class="chip ${selected===p?'active':''}" onclick="${onClickName}('${catKey}','${esc(p)}')">${esc(p)}</span>`).join("") +
+    roster.map(p => `<span class="chip ${selected===p?'active':''}" onclick="${onClickName}('${catKey}','${esc(p)}')">${esc(displayNameFor(p))}</span>`).join("") +
   `</div>`;
 }
 
@@ -754,7 +888,7 @@ function renderTonight(){
       ${activePlayers.length < roster.length ? `<p class="dim" style="margin-top:-6px; margin-bottom:10px;">Играют сегодня: ${activePlayers.map(esc).join(", ")}</p>` : ``}
       <div class="section-label" style="margin-top:12px;">Кто голосует</div>
       <div class="chip-group">
-        ${activePlayers.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(p)}</span>`).join("")}
+        ${activePlayers.map(p => `<span class="chip ${state.me===p?'active':''}" onclick="chooseMe('${esc(p)}')">${os.picks[p]?'✓ ':''}${esc(displayNameFor(p))}</span>`).join("")}
       </div>
       ${state.me ? `
         ${CATS.map(c => `
@@ -785,7 +919,7 @@ function renderMoneyPanel(os, roster){
       </div>
       <div class="dim" style="margin-bottom:6px;">Кто играет</div>
       <div class="chip-group">
-        ${roster.map(p => `<span class="chip ${participants.includes(p)?'active':''}" onclick="toggleParticipant('${esc(p)}')">${esc(p)}</span>`).join("")}
+        ${roster.map(p => `<span class="chip ${participants.includes(p)?'active':''}" onclick="toggleParticipant('${esc(p)}')">${esc(displayNameFor(p))}</span>`).join("")}
       </div>
       ${participants.length ? `
         <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
@@ -794,7 +928,7 @@ function renderMoneyPanel(os, roster){
             const spent = (1+rb) * (os.buyIn||0);
             return `
               <div class="row">
-                <span>${esc(p)}</span>
+                <span>${esc(displayNameFor(p))}</span>
                 <span style="display:flex; align-items:center; gap:10px;">
                   <span style="display:flex; align-items:center; gap:6px;">
                     <button class="btn ghost" style="padding:4px 10px;" onclick="changeRebuy('${esc(p)}', -1)">−</button>
@@ -827,7 +961,7 @@ function renderPayoutsPanel(os){
       <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
         ${participants.map(p => `
           <div class="row">
-            <span>${esc(p)}</span>
+            <span>${esc(displayNameFor(p))}</span>
             <span style="display:flex; align-items:center; gap:6px;">
               <input type="text" inputmode="numeric" value="${esc(String(state.payouts[p]||0))}" oninput="onPayoutInput(this,'${esc(p)}')" style="width:80px; text-align:right; padding:5px 8px;"> ₽
             </span>
@@ -856,7 +990,7 @@ function renderLeaderboard(){
       <div class="row" style="flex-direction:column; align-items:stretch; gap:7px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-weight:700; display:flex; align-items:center; gap:6px;">
-            <span style="min-width:22px;">${medals[i] || ('#'+(i+1))}</span> ${esc(p.name)}
+            <span style="min-width:22px;">${medals[i] || ('#'+(i+1))}</span> ${esc(displayNameFor(p.name))}
           </span>
           <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--gold);">${p.points} ${pluralRu(p.points,'очко','очка','очков')}</span>
         </div>
@@ -871,7 +1005,7 @@ function renderLeaderboard(){
     .sort((a,b)=> (b.champion+b.buster+b.bluffer) - (a.champion+a.buster+a.bluffer))
     .map(p => `
       <div class="row">
-        <span style="font-weight:bold;">${esc(p.name)}</span>
+        <span style="font-weight:bold;">${esc(displayNameFor(p.name))}</span>
         <span class="dim" style="display:flex; gap:10px;">
           ${p.champion? `<span class="suit-gold">${p.champion}× чемпион</span>`:''}
           ${p.buster? `<span class="suit-red">${p.buster}× первый вылет</span>`:''}
@@ -886,7 +1020,7 @@ function renderLeaderboard(){
       const net = p.won - p.spent;
       return `
       <div class="row">
-        <span style="font-weight:bold;">${esc(p.name)}</span>
+        <span style="font-weight:bold;">${esc(displayNameFor(p.name))}</span>
         <span class="dim" style="display:flex; gap:10px; align-items:center;">
           <span>${p.moneyNights} вечеров</span>
           <span>${p.rebuys} докупок</span>
@@ -927,7 +1061,7 @@ function renderHistory(){
       <div class="dim" style="margin-bottom:8px;">🎯 Прогнозы игроков</div>
       ${Object.keys(s.picks).length ? Object.entries(s.picks).map(([player,pick]) => `
         <div class="row" style="background:transparent; padding:4px 0;">
-          <span class="dim">${esc(player)}</span>
+          <span class="dim">${esc(displayNameFor(player))}</span>
           <span style="display:flex; gap:10px;">
             ${CATS.map(c => {
               const correct = pick[c.key] === s.results[c.key];
@@ -946,7 +1080,7 @@ function renderHistory(){
           const net = won - spent;
           return `
           <div class="row" style="background:transparent; padding:4px 0;">
-            <span class="dim">${esc(p)}</span>
+            <span class="dim">${esc(displayNameFor(p))}</span>
             <span class="dim" style="display:flex; gap:8px; align-items:center;">
               <span>докупок: ${rebuys[p]||0}</span>
               <span>получил ${won} ₽</span>
@@ -1000,11 +1134,11 @@ function renderTeam(){
         <div class="section-label">Участники «${esc(activeTeam?.name||'')}»</div>
         ${state.membersDetailed.map(m => `
           <div class="row">
-            <span>${esc(m.username)}${m.role==='owner'?' 👑':''}</span>
+            <span>${esc(nameFromRecord(m))}${m.role==='owner'?' 👑':''}</span>
             ${isOwner && m.role!=='owner' ? `
               <span style="display:flex; gap:10px; align-items:center;">
-                <span class="dim" style="cursor:pointer;" onclick="promptResetPassword('${m.userId}','${esc(m.username)}')">сбросить пароль</span>
-                <span class="del" title="Исключить из команды" onclick="removeMember('${m.userId}','${esc(m.username)}')">✕</span>
+                <span class="dim" style="cursor:pointer;" onclick="promptResetPassword('${m.userId}','${esc(nameFromRecord(m))}')">сбросить пароль</span>
+                <span class="del" title="Исключить из команды" onclick="removeMember('${m.userId}','${esc(nameFromRecord(m))}')">✕</span>
               </span>
             ` : ``}
           </div>
@@ -1050,6 +1184,12 @@ function render(){
   }
 
   accountBarEl.innerHTML = renderAccountBar();
+
+  if(state.settingsOpen){
+    tabsEl.innerHTML = "";
+    contentEl.innerHTML = renderSettings();
+    return;
+  }
 
   if(!state.activeTeamId){ state.tab = "team"; }
 
